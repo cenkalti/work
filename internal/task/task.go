@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
+
+var validID = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
 const (
 	StatusPending   = "pending"
@@ -50,6 +53,9 @@ func LoadAll(dir string) (map[string]*Task, error) {
 }
 
 func (t *Task) WriteToFile(dir string) error {
+	if !validID.MatchString(t.ID) {
+		return fmt.Errorf("invalid task ID %q: must be kebab-case (lowercase alphanumeric and hyphens)", t.ID)
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
