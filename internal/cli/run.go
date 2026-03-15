@@ -112,7 +112,11 @@ func runTask(ctx *WorkContext, goalBranch, taskID string) error {
 		}
 	}
 
-	goal, _ := os.ReadFile(filepath.Join(spacePath, "goal.md"))
+	goalPath := filepath.Join(spacePath, "goal.md")
+	goal, err := os.ReadFile(goalPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not read %s: %v\n", goalPath, err)
+	}
 	claudeMD := agent.TaskClaudeMD(goalBranch, string(goal), &t)
 	if err := os.WriteFile(filepath.Join(wtPath, "CLAUDE.md"), []byte(claudeMD), 0644); err != nil {
 		return fmt.Errorf("writing CLAUDE.md: %w", err)
