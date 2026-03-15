@@ -95,3 +95,23 @@ func DeleteBranch(repo, branch string) error {
 	}
 	return nil
 }
+
+// RemoveWorktreeIfExists removes a git worktree by path, succeeding silently if it does not exist.
+func RemoveWorktreeIfExists(repo, worktreePath string) error {
+	for _, p := range ListWorktrees(repo) {
+		if p == worktreePath {
+			return RemoveWorktree(repo, worktreePath)
+		}
+	}
+	return nil
+}
+
+// DeleteBranchIfExists deletes a local git branch, succeeding silently if it does not exist.
+func DeleteBranchIfExists(repo, branch string) error {
+	cmd := exec.Command("git", "rev-parse", "--verify", branch)
+	cmd.Dir = repo
+	if err := cmd.Run(); err != nil {
+		return nil
+	}
+	return DeleteBranch(repo, branch)
+}

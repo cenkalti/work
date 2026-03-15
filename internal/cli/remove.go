@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/cenkalti/work/internal/git"
 	"github.com/spf13/cobra"
@@ -22,20 +21,20 @@ func removeCmd() *cobra.Command {
 			if isTask {
 				branch := fmt.Sprintf("%s.%s", goal, taskID)
 				wtPath := ctx.WorktreePath(branch)
-				if err := git.RemoveWorktree(ctx.RootRepo, wtPath); err != nil {
-					fmt.Fprintf(os.Stderr, "warning: %v\n", err)
+				if err := git.RemoveWorktreeIfExists(ctx.RootRepo, wtPath); err != nil {
+					return fmt.Errorf("remove worktree: %w", err)
 				}
-				if err := git.DeleteBranch(ctx.RootRepo, branch); err != nil {
-					fmt.Fprintf(os.Stderr, "warning: %v\n", err)
+				if err := git.DeleteBranchIfExists(ctx.RootRepo, branch); err != nil {
+					return fmt.Errorf("delete branch: %w", err)
 				}
 				fmt.Printf("Task %s removed.\n", taskID)
 			} else {
 				wtPath := ctx.WorktreePath(goal)
-				if err := git.RemoveWorktree(ctx.RootRepo, wtPath); err != nil {
-					fmt.Fprintf(os.Stderr, "warning: %v\n", err)
+				if err := git.RemoveWorktreeIfExists(ctx.RootRepo, wtPath); err != nil {
+					return fmt.Errorf("remove worktree: %w", err)
 				}
-				if err := git.DeleteBranch(ctx.RootRepo, goal); err != nil {
-					fmt.Fprintf(os.Stderr, "warning: %v\n", err)
+				if err := git.DeleteBranchIfExists(ctx.RootRepo, goal); err != nil {
+					return fmt.Errorf("delete branch: %w", err)
 				}
 				fmt.Printf("Goal %s removed.\n", goal)
 			}
