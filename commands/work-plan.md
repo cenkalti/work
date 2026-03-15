@@ -54,19 +54,7 @@ Update the workspace `plan.md` based on the review. The human approves the final
 
 ### Step 7: Task Decomposition
 
-Decompose the plan into tasks using Work:
-
-```bash
-work decompose
-```
-
-You can scope decomposition to specific milestones:
-
-```bash
-work decompose -i "for milestone 1 only"
-```
-
-This produces task JSON files in the workspace `tasks/` directory. Each task has a clear goal, dependencies, relevant files, and acceptance criteria.
+Use the `create_task` tool (available via the `work` MCP server) to write each task directly. Call it once per task based on your full knowledge of the plan — do not re-read workspace files. After creating all tasks, run `work tree` to verify the dependency graph.
 
 View the task dependency tree:
 

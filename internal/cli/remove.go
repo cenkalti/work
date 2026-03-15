@@ -44,11 +44,11 @@ func removeCmd() *cobra.Command {
 				}
 			}
 
-			if err := git.RemoveWorktree(ctx.RootRepo, wtPath); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: %v\n", err)
+			if err := git.RemoveWorktreeIfExists(ctx.RootRepo, wtPath); err != nil {
+				return fmt.Errorf("remove worktree: %w", err)
 			}
-			if err := git.DeleteBranch(ctx.RootRepo, branch); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: %v\n", err)
+			if err := git.DeleteBranchIfExists(ctx.RootRepo, branch); err != nil {
+				return fmt.Errorf("delete branch: %w", err)
 			}
 			fmt.Printf("%s removed.\n", strings.Title(subject))
 			return nil

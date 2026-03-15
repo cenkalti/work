@@ -63,6 +63,18 @@ func runGoal(ctx *WorkContext, name string) error {
 		return fmt.Errorf("writing CLAUDE.md: %w", err)
 	}
 
+	mcpJSON := `{
+  "mcpServers": {
+    "work": {
+      "command": "work",
+      "args": ["mcp"]
+    }
+  }
+}`
+	if err := os.WriteFile(filepath.Join(wtPath, ".mcp.json"), []byte(mcpJSON), 0644); err != nil {
+		return fmt.Errorf("writing .mcp.json: %w", err)
+	}
+
 	success = true
 	return execClaude(wtPath)
 }

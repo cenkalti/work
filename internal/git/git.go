@@ -55,18 +55,18 @@ func DefaultBranch(repo string) string {
 }
 
 // CurrentBranch returns the current branch name of the repo.
-func CurrentBranch(repo string) string {
+func CurrentBranch(repo string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	cmd.Dir = repo
 	out, err := cmd.Output()
 	if err != nil {
-		return "pluribus"
+		return "", fmt.Errorf("git rev-parse: %w", err)
 	}
 	branch := strings.TrimSpace(string(out))
 	if branch == "" || branch == "HEAD" {
-		return "work"
+		return "", fmt.Errorf("not on a named branch")
 	}
-	return branch
+	return branch, nil
 }
 
 // ListWorktrees returns the paths of all git worktrees.
@@ -94,4 +94,24 @@ func DeleteBranch(repo, branch string) error {
 		return fmt.Errorf("git branch delete: %s: %w", string(out), err)
 	}
 	return nil
+}
+
+// RemoveWorktreeIfExists removes a git worktree by path, succeeding silently if it does not exist.
+func RemoveWorktreeIfExists(repo, worktreePath string) error {
+	for _, p := range ListWorktrees(repo) {
+		if p == worktreePath {
+			return RemoveWorktree(repo, worktreePath)
+		}
+	}
+	return nil
+}
+
+// DeleteBranchIfExists deletes a local git branch, succeeding silently if it does not exist.
+func DeleteBranchIfExists(repo, branch string) error {
+	cmd := exec.Command("git", "rev-parse", "--verify", branch)
+	cmd.Dir = repo
+	if err := cmd.Run(); err != nil {
+		return nil
+	}
+	return DeleteBranch(repo, branch)
 }
