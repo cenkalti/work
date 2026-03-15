@@ -58,10 +58,10 @@ func listCmd() *cobra.Command {
 func listTasks(tasksDir string) error {
 	tasks, err := task.LoadAll(tasksDir)
 	if err != nil {
-		return fmt.Errorf("no tasks found; run 'work decompose' first")
+		return fmt.Errorf("loading tasks: %w", err)
 	}
 	if len(tasks) == 0 {
-		return fmt.Errorf("no tasks found; run 'work decompose' first")
+		return fmt.Errorf("no tasks found; create tasks using the work MCP tool")
 	}
 
 	sorted := make([]*task.Task, 0, len(tasks))
