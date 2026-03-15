@@ -20,6 +20,7 @@ func Root() *cobra.Command {
 		listCmd(),
 		removeCmd(),
 		cdCmd(),
+		mcpCmd(),
 	} {
 		c.GroupID = "general"
 		cmd.AddCommand(c)
