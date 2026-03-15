@@ -19,7 +19,10 @@ func showCmd() *cobra.Command {
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := workContext(cmd)
-			goal, taskID, _ := ctx.ResolveName(args[0])
+			goal, taskID, isTask := ctx.ResolveName(args[0])
+			if !isTask {
+				return fmt.Errorf("%q is not a task; use 'goal.task-id' or run from a goal worktree", args[0])
+			}
 			tasksDir := tasksDirFor(ctx.RootRepo, goal)
 			return runShow(tasksDir, taskID)
 		},
