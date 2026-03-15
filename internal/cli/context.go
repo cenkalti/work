@@ -47,19 +47,20 @@ func detectContext() (*WorkContext, error) {
 	}
 
 	ctx := &WorkContext{RootRepo: rootRepo}
-
-	if goalBranch, taskID, ok := strings.Cut(branch, "."); ok {
-		ctx.Location = LocationTask
-		ctx.GoalBranch = goalBranch
-		ctx.TaskID = taskID
-	} else if rootRepo != cwd {
-		ctx.Location = LocationGoal
-		ctx.GoalBranch = branch
-	} else {
-		ctx.Location = LocationRoot
-	}
-
+	ctx.Location, ctx.GoalBranch, ctx.TaskID = classifyBranch(branch, rootRepo == cwd)
 	return ctx, nil
+}
+
+// classifyBranch determines location, goal branch, and task ID from a git branch name.
+// atRoot should be true when the cwd equals the root repo (i.e. not inside a worktree subdir).
+func classifyBranch(branch string, atRoot bool) (LocationType, string, string) {
+	if goalBranch, taskID, ok := strings.Cut(branch, "."); ok {
+		return LocationTask, goalBranch, taskID
+	}
+	if !atRoot {
+		return LocationGoal, branch, ""
+	}
+	return LocationRoot, "", ""
 }
 
 // persistWorkContext calls detectContext and stores the result in the command's context.
