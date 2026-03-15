@@ -1,14 +1,19 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/cenkalti/work/internal/git"
 	"github.com/spf13/cobra"
 )
 
 func removeCmd() *cobra.Command {
-	return &cobra.Command{
+	var yes bool
+
+	cmd := &cobra.Command{
 		Use:   "remove <name>",
 		Short: "Remove a goal or task worktree and branch",
 		Long:  "If name contains a dot (goal.task) or you're in a goal worktree, removes a task.\nOtherwise removes a goal.",
@@ -18,27 +23,46 @@ func removeCmd() *cobra.Command {
 			ctx := workContext(cmd)
 			goal, taskID, isTask := ctx.ResolveName(args[0])
 
+			var subject, branch, wtPath string
 			if isTask {
-				branch := fmt.Sprintf("%s.%s", goal, taskID)
-				wtPath := ctx.WorktreePath(branch)
-				if err := git.RemoveWorktreeIfExists(ctx.RootRepo, wtPath); err != nil {
-					return fmt.Errorf("remove worktree: %w", err)
-				}
-				if err := git.DeleteBranchIfExists(ctx.RootRepo, branch); err != nil {
-					return fmt.Errorf("delete branch: %w", err)
-				}
-				fmt.Printf("Task %s removed.\n", taskID)
+				branch = fmt.Sprintf("%s.%s", goal, taskID)
+				wtPath = ctx.WorktreePath(branch)
+				subject = fmt.Sprintf("task %s", taskID)
 			} else {
-				wtPath := ctx.WorktreePath(goal)
-				if err := git.RemoveWorktreeIfExists(ctx.RootRepo, wtPath); err != nil {
-					return fmt.Errorf("remove worktree: %w", err)
-				}
-				if err := git.DeleteBranchIfExists(ctx.RootRepo, goal); err != nil {
-					return fmt.Errorf("delete branch: %w", err)
-				}
-				fmt.Printf("Goal %s removed.\n", goal)
+				branch = goal
+				wtPath = ctx.WorktreePath(goal)
+				subject = fmt.Sprintf("goal %s", goal)
 			}
+
+			if !yes && isTerminal() {
+				fmt.Printf("Remove %s and its worktree? [y/N] ", subject)
+				scanner := bufio.NewScanner(os.Stdin)
+				scanner.Scan()
+				if !strings.EqualFold(strings.TrimSpace(scanner.Text()), "y") {
+					fmt.Println("Aborted.")
+					return nil
+				}
+			}
+
+			if err := git.RemoveWorktreeIfExists(ctx.RootRepo, wtPath); err != nil {
+				return fmt.Errorf("remove worktree: %w", err)
+			}
+			if err := git.DeleteBranchIfExists(ctx.RootRepo, branch); err != nil {
+				return fmt.Errorf("delete branch: %w", err)
+			}
+			fmt.Printf("%s removed.\n", strings.Title(subject))
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "skip confirmation prompt")
+	return cmd
+}
+
+func isTerminal() bool {
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return (fi.Mode() & os.ModeCharDevice) != 0
 }

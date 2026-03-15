@@ -33,6 +33,19 @@ func TestTaskClaudeMD(t *testing.T) {
 			t.Errorf("prompt missing %q", want)
 		}
 	}
+
+	// Optional fields absent when empty
+	tkMin := &task.Task{ID: "min", TaskSummary: "minimal task"}
+	minPrompt := TaskClaudeMD("goal", "", tkMin)
+	if strings.Contains(minPrompt, "# Goal") {
+		t.Error("expected no Goal section when goal is empty")
+	}
+	if strings.Contains(minPrompt, "Description") {
+		t.Error("expected no Description when empty")
+	}
+	if strings.Contains(minPrompt, "Acceptance Criteria") {
+		t.Error("expected no Acceptance Criteria when empty")
+	}
 }
 
 func TestGoalClaudeMD(t *testing.T) {
@@ -49,5 +62,10 @@ func TestGoalClaudeMD(t *testing.T) {
 		if !strings.Contains(md, want) {
 			t.Errorf("GoalClaudeMD missing %q", want)
 		}
+	}
+
+	// Goal branch is interpolated, not a different branch
+	if strings.Contains(md, "update-deps/goal.md") && !strings.Contains(md, ".work/space/update-deps/goal.md") {
+		t.Error("goal.md path not correctly prefixed")
 	}
 }

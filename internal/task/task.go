@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
+
+var validID = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
 const (
 	StatusPending   = "pending"
@@ -16,7 +19,9 @@ const (
 
 type Task struct {
 	ID          string   `json:"id" yaml:"id"`
-	TaskSummary string   `json:"task" yaml:"task"`
+	// TaskSummary is the one-line task description. JSON key is "summary".
+	// Note: existing task JSON files using the old key "task" must be migrated.
+	TaskSummary string   `json:"summary" yaml:"summary"`
 	DependsOn   []string `json:"depends_on" yaml:"depends_on"`
 	Status      string   `json:"status" yaml:"status"`
 	Files       []string `json:"files" yaml:"files"`
@@ -50,6 +55,9 @@ func LoadAll(dir string) (map[string]*Task, error) {
 }
 
 func (t *Task) WriteToFile(dir string) error {
+	if !validID.MatchString(t.ID) {
+		return fmt.Errorf("invalid task ID %q: must be kebab-case (lowercase alphanumeric and hyphens)", t.ID)
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}

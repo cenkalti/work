@@ -47,19 +47,20 @@ func detectContext() (*WorkContext, error) {
 	}
 
 	ctx := &WorkContext{RootRepo: rootRepo}
-
-	if goalBranch, taskID, ok := strings.Cut(branch, "."); ok {
-		ctx.Location = LocationTask
-		ctx.GoalBranch = goalBranch
-		ctx.TaskID = taskID
-	} else if rootRepo != cwd {
-		ctx.Location = LocationGoal
-		ctx.GoalBranch = branch
-	} else {
-		ctx.Location = LocationRoot
-	}
-
+	ctx.Location, ctx.GoalBranch, ctx.TaskID = classifyBranch(branch, rootRepo == cwd)
 	return ctx, nil
+}
+
+// classifyBranch determines location, goal branch, and task ID from a git branch name.
+// atRoot should be true when the cwd equals the root repo (i.e. not inside a worktree subdir).
+func classifyBranch(branch string, atRoot bool) (LocationType, string, string) {
+	if goalBranch, taskID, ok := strings.Cut(branch, "."); ok {
+		return LocationTask, goalBranch, taskID
+	}
+	if !atRoot {
+		return LocationGoal, branch, ""
+	}
+	return LocationRoot, "", ""
 }
 
 // persistWorkContext calls detectContext and stores the result in the command's context.
@@ -94,7 +95,7 @@ func (c *WorkContext) GoalSpacePath() string {
 	if c.GoalBranch == "" {
 		return ""
 	}
-	return filepath.Join(c.RootRepo, ".work", "space", c.GoalBranch)
+	return GoalSpacePath(c.RootRepo, c.GoalBranch)
 }
 
 // TasksDir returns the path to the goal's tasks directory.
@@ -109,7 +110,7 @@ func (c *WorkContext) WorktreePath(branch string) string {
 }
 
 func (c *WorkContext) WorktreeRoot() string {
-	return filepath.Join(c.RootRepo, ".work", "tree")
+	return WorktreeRootPath(c.RootRepo)
 }
 
 // ResolveName splits a dot-notation name into goal and taskID.
@@ -139,17 +140,17 @@ func (c *WorkContext) ResolveGoal(explicit string) (string, error) {
 
 // goalSpacePath returns the path to a goal's workspace.
 func goalSpacePath(rootRepo, goalBranch string) string {
-	return filepath.Join(rootRepo, ".work", "space", goalBranch)
+	return GoalSpacePath(rootRepo, goalBranch)
 }
 
 // taskSpacePath returns the path to a task agent's workspace.
 func taskSpacePath(rootRepo, goalBranch, taskID string) string {
-	return filepath.Join(rootRepo, ".work", "space", goalBranch+"."+taskID)
+	return TaskSpacePath(rootRepo, goalBranch, taskID)
 }
 
 // tasksDirFor returns the tasks directory for a given goal.
 func tasksDirFor(rootRepo, goalBranch string) string {
-	return filepath.Join(goalSpacePath(rootRepo, goalBranch), "tasks")
+	return filepath.Join(GoalSpacePath(rootRepo, goalBranch), "tasks")
 }
 
 // resolveRootRepo returns the main worktree path (the root repo).
@@ -170,7 +171,7 @@ func resolveRootRepo(repo string) string {
 // listGoalWorktreeNames returns worktree names that are goals (no dots).
 func listGoalWorktreeNames(rootRepo string) []string {
 	var goals []string
-	wtRoot := filepath.Join(rootRepo, ".work", "tree")
+	wtRoot := WorktreeRootPath(rootRepo)
 	for _, name := range listWorktreeNames(wtRoot) {
 		if !strings.Contains(name, ".") {
 			goals = append(goals, name)

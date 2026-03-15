@@ -27,7 +27,6 @@ func Root() *cobra.Command {
 	}
 
 	for _, c := range []*cobra.Command{
-		decomposeCmd(),
 		showCmd(),
 		treeCmd(),
 		readyCmd(),
