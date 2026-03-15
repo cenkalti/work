@@ -56,23 +56,25 @@ Update the workspace `plan.md` based on the review. The human approves the final
 
 Use the `create_task` tool (available via the `work` MCP server) to write each task directly. Call it once per task based on your full knowledge of the plan — do not re-read workspace files. After creating all tasks, run `work tree` to verify the dependency graph.
 
-View the task dependency tree:
-
 ```bash
 work tree
 ```
 
-View tasks ready to work on (no pending dependencies):
+### Step 8: Choose Execution Mode
+
+Ask the human how they want to execute the tasks:
+
+**Option A — Inline (current agent):** You work through each task sequentially in this conversation, in dependency order. Use `work ready` to find the next task, do the work, then mark it complete with `work complete <id>`. Best for small goals (≤5 tasks, no parallelism needed).
+
+**Option B — Worktrees (separate agents):** Each task runs as an isolated Claude Code session in its own git worktree. Best for large goals, parallel work, or tasks that benefit from isolation.
 
 ```bash
-work ready
+work ready        # show tasks with no pending dependencies
+work run <id>     # launch a separate agent for a task (Option B)
+work complete <id> # mark a task done (Option A)
 ```
 
-Start working on a task:
-
-```bash
-work run <task-id>
-```
+If the human chooses **Option A**, invoke `/work-execute` and work through ready tasks one by one, marking each complete before moving to the next.
 
 ## Rules
 
