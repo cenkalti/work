@@ -74,13 +74,15 @@ func persistWorkContext(cmd *cobra.Command, args []string) error {
 
 // workContext retrieves the *WorkContext stored by PersistentPreRunE.
 // If not yet stored (e.g. during shell completion), it detects and caches it.
+// Exits the program if context detection fails.
 func workContext(cmd *cobra.Command) *WorkContext {
 	if wc, ok := cmd.Context().Value(workContextKey{}).(*WorkContext); ok {
 		return wc
 	}
 	wc, err := detectContext()
 	if err != nil {
-		return &WorkContext{}
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
 	}
 	cmd.SetContext(context.WithValue(cmd.Context(), workContextKey{}, wc))
 	return wc
