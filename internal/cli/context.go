@@ -41,7 +41,10 @@ func detectContext() (*WorkContext, error) {
 		return nil, err
 	}
 	rootRepo := resolveRootRepo(cwd)
-	branch := git.CurrentBranch(cwd)
+	branch, err := git.CurrentBranch(cwd)
+	if err != nil {
+		return nil, fmt.Errorf("detect current branch: %w", err)
+	}
 
 	ctx := &WorkContext{RootRepo: rootRepo}
 
