@@ -10,7 +10,7 @@ go build -o ~/go/bin/work ./cmd/work/
 
 ```bash
 work run <name>              # no dot → goal; dot or shorthand in worktree → task
-work list [goal]             # no arg from root → goals; with arg or in worktree → tasks
+work ls [goal]               # no arg from root → goals; with arg or in worktree → tasks
 work remove <name>           # no dot → goal; dot → task
 work show <name>             # show task details
 work cd <name>               # cd into worktree
