@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
+	"github.com/cenkalti/work/internal/git"
 	"github.com/cenkalti/work/internal/location"
-	"github.com/cenkalti/work/internal/task"
 	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
 
@@ -43,10 +45,19 @@ func detectLocation(cmd *cobra.Command) *location.Location {
 
 // listGoalWorktreeNames returns worktree names that are goals (no dots).
 func listGoalWorktreeNames(rootRepo string) []string {
-	var goals []string
 	wtRoot := paths.WorktreeRoot(rootRepo)
-	for _, name := range listWorktreeNames(wtRoot) {
-		if !strings.Contains(name, ".") {
+	worktrees, err := git.ListWorktrees(wtRoot)
+	if err != nil {
+		return nil
+	}
+	prefix := wtRoot
+	if !strings.HasSuffix(prefix, string(filepath.Separator)) {
+		prefix += string(filepath.Separator)
+	}
+	var goals []string
+	for _, path := range worktrees {
+		name, ok := strings.CutPrefix(path, prefix)
+		if ok && !strings.Contains(name, ".") {
 			goals = append(goals, name)
 		}
 	}

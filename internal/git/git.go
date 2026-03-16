@@ -71,12 +71,12 @@ func CurrentBranch(repo string) (string, error) {
 }
 
 // ListWorktrees returns the paths of all git worktrees.
-func ListWorktrees(repo string) []string {
+func ListWorktrees(repo string) ([]string, error) {
 	cmd := exec.Command("git", "worktree", "list", "--porcelain")
 	cmd.Dir = repo
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("git worktree list: %s: %w", string(out), err)
 	}
 	var paths []string
 	for line := range strings.SplitSeq(string(out), "\n") {
@@ -84,7 +84,7 @@ func ListWorktrees(repo string) []string {
 			paths = append(paths, path)
 		}
 	}
-	return paths
+	return paths, nil
 }
 
 // DeleteBranch deletes a local git branch.
@@ -99,7 +99,11 @@ func DeleteBranch(repo, branch string) error {
 
 // RemoveWorktreeIfExists removes a git worktree by path, succeeding silently if it does not exist.
 func RemoveWorktreeIfExists(repo, worktreePath string) error {
-	if slices.Contains(ListWorktrees(repo), worktreePath) {
+	paths, err := ListWorktrees(repo)
+	if err != nil {
+		return err
+	}
+	if slices.Contains(paths, worktreePath) {
 		return RemoveWorktree(repo, worktreePath)
 	}
 	return nil

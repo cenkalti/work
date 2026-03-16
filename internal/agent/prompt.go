@@ -3,6 +3,7 @@ package agent
 import (
 	"bytes"
 	_ "embed"
+	"fmt"
 	"strings"
 	"text/template"
 
@@ -36,7 +37,7 @@ type taskData struct {
 func GoalClaudeMD(goalBranch string) string {
 	var buf bytes.Buffer
 	if err := goalTemplate.Execute(&buf, goalData{GoalBranch: goalBranch}); err != nil {
-		panic(err)
+		panic(fmt.Sprintf("bug: template execution failed: %v", err))
 	}
 	return buf.String()
 }
@@ -45,7 +46,7 @@ func GoalClaudeMD(goalBranch string) string {
 func TaskClaudeMD(goalBranch, goal string, t *task.Task) string {
 	var buf bytes.Buffer
 	if err := taskTemplate.Execute(&buf, taskData{GoalBranch: goalBranch, Goal: goal, Task: t}); err != nil {
-		panic(err)
+		panic(fmt.Sprintf("bug: template execution failed: %v", err))
 	}
 	return buf.String()
 }
