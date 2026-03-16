@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cenkalti/work/internal/task"
 	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
 
@@ -19,8 +19,13 @@ func completeCmd() *cobra.Command {
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			loc := detectLocation(cmd)
-			goal, taskID := loc.ResolveName(args[0])
-			return runComplete(paths.TasksDir(loc.RootRepo, goal), taskID)
+			branch := loc.ResolveName(args[0])
+			parent := paths.ParentBranch(branch)
+			if parent == "" {
+				return fmt.Errorf("%q is a root task and has no task file", args[0])
+			}
+			taskID := paths.BranchID(branch)
+			return runComplete(paths.TasksDir(loc.RootRepo, parent), taskID)
 		},
 	}
 }

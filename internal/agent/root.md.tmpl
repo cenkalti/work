@@ -1,0 +1,27 @@
+# Work
+
+You are working inside a task worktree for **{{.Branch}}**. Work is a multi-task orchestrator that decomposes plans into tasks with dependencies, then runs each task as a separate Claude Code instance in its own git worktree.
+
+Use the `/work-plan` slash command to start the planning workflow.
+
+## Workspace
+
+Your workspace is at `workspace/`. Use it for all planning documents.
+
+## Available Commands
+
+```bash
+work ls                 # List subtasks with their status
+work show <id>          # Show details of a subtask
+work tree               # Show subtask dependency tree
+work tree <id>          # Show subtree rooted at a subtask
+work ready              # Show subtasks ready to work on (no pending dependencies)
+work active             # Show subtasks currently being worked on
+work complete <id>      # Mark a subtask as complete
+work rm <id>            # Remove a subtask
+```
+
+## Key Files
+
+- `workspace/plan.md` — The implementation plan (created during `/work-plan`)
+- `workspace/tasks/` — Subtask JSON files (created via the work MCP tool)

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/cenkalti/work/internal/git"
+	"github.com/cenkalti/work/internal/paths"
 	"github.com/spf13/cobra"
 )
 
@@ -16,28 +17,19 @@ func removeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "rm <name>",
 		Short: "Remove a worktree and its branch",
-		Long: `work rm <goal>          # remove goal worktree and branch
-work rm <task>          # remove task worktree and branch (from goal worktree)
-work rm <goal.task>     # remove task worktree and branch`,
+		Long: `work rm <task>          # remove root task worktree and branch
+work rm <subtask>       # remove child task worktree and branch (from task worktree)
+work rm <task.subtask>  # remove child task worktree and branch`,
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			loc := detectLocation(cmd)
-			goal, taskID := loc.ResolveName(args[0])
-
-			var subject, branch, wtPath string
-			if taskID != "" {
-				branch = fmt.Sprintf("%s.%s", goal, taskID)
-				wtPath = loc.WorktreePath(branch)
-				subject = fmt.Sprintf("task %s", taskID)
-			} else {
-				branch = goal
-				wtPath = loc.WorktreePath(goal)
-				subject = fmt.Sprintf("goal %s", goal)
-			}
+			branch := loc.ResolveName(args[0])
+			taskID := paths.BranchID(branch)
+			wtPath := loc.WorktreePath(branch)
 
 			if !yes && isTerminal() {
-				fmt.Printf("Remove %s and its worktree? [y/N] ", subject)
+				fmt.Printf("Remove task %s and its worktree? [y/N] ", taskID)
 				scanner := bufio.NewScanner(os.Stdin)
 				scanner.Scan()
 				if !strings.EqualFold(strings.TrimSpace(scanner.Text()), "y") {
@@ -52,7 +44,7 @@ work rm <goal.task>     # remove task worktree and branch`,
 			if err := git.DeleteBranchIfExists(loc.RootRepo, branch); err != nil {
 				return fmt.Errorf("delete branch: %w", err)
 			}
-			fmt.Printf("%s removed.\n", strings.ToUpper(subject[:1])+subject[1:])
+			fmt.Printf("Task %s removed.\n", taskID)
 			return nil
 		},
 	}

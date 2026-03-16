@@ -7,17 +7,16 @@ import (
 	"strings"
 
 	"github.com/cenkalti/work/internal/git"
-	"github.com/cenkalti/work/internal/location"
 	"github.com/spf13/cobra"
 )
 
 func cdCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:               "cd [name]",
+		Use:   "cd [name]",
 		Short: "Print the path to a worktree",
 		Long: `work cd                 # print project root
-work cd <goal>          # print goal worktree path
-work cd <goal.task>     # print task worktree path
+work cd <task>          # print task worktree path
+work cd <task.subtask>  # print subtask worktree path
 
 Use with shell integration (shell/work.zsh) to cd into worktrees.`,
 		Args:              cobra.MaximumNArgs(1),
@@ -46,7 +45,7 @@ func worktreeCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 	loc := detectLocation(cmd)
-	if loc.Type == location.Goal || loc.Type == location.Task {
+	if !loc.IsRoot() {
 		return listTaskIDsFiltered(loc.TasksDir(), nil), cobra.ShellCompDirectiveNoFileComp
 	}
 	root := loc.WorktreeRoot()

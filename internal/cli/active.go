@@ -4,21 +4,21 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/cenkalti/work/internal/task"
 	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
 
 func activeCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "active [goal]",
+		Use:   "active [task]",
 		Short: "List tasks currently being worked on",
 		Args:  cobra.MaximumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) > 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
-			return listGoalWorktreeNames(detectLocation(cmd).RootRepo), cobra.ShellCompDirectiveNoFileComp
+			return listRootTaskNames(detectLocation(cmd).RootRepo), cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			loc := detectLocation(cmd)
@@ -26,11 +26,11 @@ func activeCmd() *cobra.Command {
 			if len(args) > 0 {
 				explicit = args[0]
 			}
-			goal, err := loc.ResolveGoal(explicit)
+			branch, err := loc.ResolveBranch(explicit)
 			if err != nil {
 				return err
 			}
-			tasks, err := task.LoadAll(paths.TasksDir(loc.RootRepo, goal))
+			tasks, err := task.LoadAll(paths.TasksDir(loc.RootRepo, branch))
 			if err != nil {
 				return fmt.Errorf("reading tasks: %w", err)
 			}

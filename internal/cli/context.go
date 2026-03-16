@@ -17,7 +17,6 @@ import (
 
 type workContextKey struct{}
 
-// persistWorkContext calls Detect and stores the result in the command's context.
 func persistWorkContext(cmd *cobra.Command, args []string) error {
 	wc, err := location.Detect()
 	if err != nil {
@@ -27,9 +26,6 @@ func persistWorkContext(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// detectLocation retrieves the *WorkContext stored by PersistentPreRunE.
-// If not yet stored (e.g. during shell completion), it detects and caches it.
-// Exits the program if context detection fails.
 func detectLocation(cmd *cobra.Command) *location.Location {
 	if wc, ok := cmd.Context().Value(workContextKey{}).(*location.Location); ok {
 		return wc
@@ -43,8 +39,8 @@ func detectLocation(cmd *cobra.Command) *location.Location {
 	return wc
 }
 
-// listGoalWorktreeNames returns worktree names that are goals (no dots).
-func listGoalWorktreeNames(rootRepo string) []string {
+// listRootTaskNames returns worktree names that are root tasks (no dots).
+func listRootTaskNames(rootRepo string) []string {
 	wtRoot := paths.WorktreeRoot(rootRepo)
 	worktrees, err := git.ListWorktrees(wtRoot)
 	if err != nil {
@@ -54,14 +50,14 @@ func listGoalWorktreeNames(rootRepo string) []string {
 	if !strings.HasSuffix(prefix, string(filepath.Separator)) {
 		prefix += string(filepath.Separator)
 	}
-	var goals []string
+	var names []string
 	for _, path := range worktrees {
 		name, ok := strings.CutPrefix(path, prefix)
 		if ok && !strings.Contains(name, ".") {
-			goals = append(goals, name)
+			names = append(names, name)
 		}
 	}
-	return goals
+	return names
 }
 
 // listTaskIDsFiltered returns task IDs matching an optional filter.

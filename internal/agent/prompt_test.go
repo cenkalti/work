@@ -10,12 +10,12 @@ import (
 func TestTaskClaudeMD(t *testing.T) {
 	tk := &task.Task{
 		ID:          "auth-impl",
-		Summary: "implement user authentication",
+		Summary:     "implement user authentication",
 		Description: "Add JWT-based auth",
 		Files:       []string{"auth.go", "middleware.go"},
 		Acceptance:  []string{"login works", "tokens expire"},
 	}
-	prompt := TaskClaudeMD("kube-access", "optimize kubernetes performance", tk)
+	prompt := TaskClaudeMD("kube-access.auth-impl", "optimize kubernetes performance", tk)
 
 	checks := []string{
 		"optimize kubernetes performance",
@@ -25,7 +25,6 @@ func TestTaskClaudeMD(t *testing.T) {
 		"auth.go",
 		"login works",
 		"workspace/log.md",
-		".work/space/kube-access.auth-impl/",
 	}
 
 	for _, want := range checks {
@@ -36,9 +35,9 @@ func TestTaskClaudeMD(t *testing.T) {
 
 	// Optional fields absent when empty
 	tkMin := &task.Task{ID: "min", Summary: "minimal task"}
-	minPrompt := TaskClaudeMD("goal", "", tkMin)
-	if strings.Contains(minPrompt, "# Goal") {
-		t.Error("expected no Goal section when goal is empty")
+	minPrompt := TaskClaudeMD("parent.min", "", tkMin)
+	if strings.Contains(minPrompt, "# Parent Task") {
+		t.Error("expected no Parent Task section when parentContext is empty")
 	}
 	if strings.Contains(minPrompt, "Description") {
 		t.Error("expected no Description when empty")
@@ -48,24 +47,23 @@ func TestTaskClaudeMD(t *testing.T) {
 	}
 }
 
-func TestGoalClaudeMD(t *testing.T) {
-	md := GoalClaudeMD("update-deps")
+func TestRootTaskClaudeMD(t *testing.T) {
+	md := RootTaskClaudeMD("update-deps")
 
 	checks := []string{
 		"/work-plan",
-		".work/space/update-deps/",
-		"work decompose",
-		"work list",
+		"workspace/plan.md",
+		"workspace/tasks/",
+		"work ls",
 	}
 
 	for _, want := range checks {
 		if !strings.Contains(md, want) {
-			t.Errorf("GoalClaudeMD missing %q", want)
+			t.Errorf("RootTaskClaudeMD missing %q", want)
 		}
 	}
 
-	// Goal branch is interpolated, not a different branch
-	if strings.Contains(md, "update-deps/goal.md") && !strings.Contains(md, ".work/space/update-deps/goal.md") {
-		t.Error("goal.md path not correctly prefixed")
+	if !strings.Contains(md, "update-deps") {
+		t.Error("RootTaskClaudeMD should contain the branch name")
 	}
 }

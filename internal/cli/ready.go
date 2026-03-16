@@ -4,21 +4,21 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/cenkalti/work/internal/task"
 	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
 
 func readyCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "ready [goal]",
+		Use:   "ready [task]",
 		Short: "List tasks with all dependencies met",
 		Args:  cobra.MaximumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) > 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
-			return listGoalWorktreeNames(detectLocation(cmd).RootRepo), cobra.ShellCompDirectiveNoFileComp
+			return listRootTaskNames(detectLocation(cmd).RootRepo), cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			loc := detectLocation(cmd)
@@ -26,11 +26,11 @@ func readyCmd() *cobra.Command {
 			if len(args) > 0 {
 				explicit = args[0]
 			}
-			goal, err := loc.ResolveGoal(explicit)
+			branch, err := loc.ResolveBranch(explicit)
 			if err != nil {
 				return err
 			}
-			return runReady(paths.TasksDir(loc.RootRepo, goal))
+			return runReady(paths.TasksDir(loc.RootRepo, branch))
 		},
 	}
 }

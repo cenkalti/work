@@ -5,9 +5,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/cenkalti/work/internal/location"
-	"github.com/cenkalti/work/internal/task"
 	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
 
@@ -26,30 +25,30 @@ func statusOrder(s string) int {
 
 func listCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "ls [goal]",
-		Short: "List goals or tasks",
-		Args:  cobra.MaximumNArgs(1),
+		Use:   "ls [task]",
+		Short: "List tasks",
+		Long: `work ls              # list root tasks (from root) or subtasks (from task worktree)
+work ls <task>       # list subtasks of a specific task`,
+		Args: cobra.MaximumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) > 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
-			return listGoalWorktreeNames(detectLocation(cmd).RootRepo), cobra.ShellCompDirectiveNoFileComp
+			return listRootTaskNames(detectLocation(cmd).RootRepo), cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			loc := detectLocation(cmd)
 
-			// If explicit goal arg given, list its tasks
 			if len(args) > 0 {
-				return listTasks(paths.TasksDir(loc.RootRepo, args[0]))
+				branch := loc.ResolveName(args[0])
+				return listTasks(paths.TasksDir(loc.RootRepo, branch))
 			}
 
-			// If in a goal/task worktree, list tasks
-			if loc.Type == location.Goal || loc.Type == location.Task {
+			if !loc.IsRoot() {
 				return listTasks(loc.TasksDir())
 			}
 
-			// At root: list goals
-			for _, name := range listGoalWorktreeNames(loc.RootRepo) {
+			for _, name := range listRootTaskNames(loc.RootRepo) {
 				fmt.Println(name)
 			}
 			return nil

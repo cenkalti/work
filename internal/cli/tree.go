@@ -4,27 +4,26 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/cenkalti/work/internal/location"
-	"github.com/cenkalti/work/internal/task"
 	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
 
 func treeCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "tree [goal] [task-id]",
+		Use:   "tree [task] [subtask-id]",
 		Short: "Show tasks in a dependency tree",
 		Args:  cobra.MaximumNArgs(2),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			loc := detectLocation(cmd)
 			switch len(args) {
 			case 0:
-				if loc.Type == location.Goal || loc.Type == location.Task {
+				if !loc.IsRoot() {
 					return listTaskIDsFiltered(loc.TasksDir(), nil), cobra.ShellCompDirectiveNoFileComp
 				}
-				return listGoalWorktreeNames(loc.RootRepo), cobra.ShellCompDirectiveNoFileComp
+				return listRootTaskNames(loc.RootRepo), cobra.ShellCompDirectiveNoFileComp
 			case 1:
-				if loc.Type == location.Root {
+				if loc.IsRoot() {
 					return listTaskIDsFiltered(paths.TasksDir(loc.RootRepo, args[0]), nil), cobra.ShellCompDirectiveNoFileComp
 				}
 			}
@@ -33,25 +32,25 @@ func treeCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			loc := detectLocation(cmd)
 
-			var goal, filterID string
+			var branch, filterID string
+			var err error
 			switch {
 			case len(args) == 2:
-				goal = args[0]
+				branch = loc.ResolveName(args[0])
 				filterID = args[1]
-			case len(args) == 1 && (loc.Type == location.Goal || loc.Type == location.Task):
-				goal = loc.Goal
+			case len(args) == 1 && !loc.IsRoot():
+				branch = loc.Branch
 				filterID = args[0]
 			case len(args) == 1:
-				goal = args[0]
+				branch = loc.ResolveName(args[0])
 			default:
-				var err error
-				goal, err = loc.ResolveGoal("")
+				branch, err = loc.ResolveBranch("")
 				if err != nil {
 					return err
 				}
 			}
 
-			return runTree(paths.TasksDir(loc.RootRepo, goal), filterID)
+			return runTree(paths.TasksDir(loc.RootRepo, branch), filterID)
 		},
 	}
 }

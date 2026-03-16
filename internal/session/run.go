@@ -6,21 +6,46 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/cenkalti/work/internal/agent"
 	"github.com/cenkalti/work/internal/git"
 	"github.com/cenkalti/work/internal/location"
-	"github.com/cenkalti/work/internal/task"
 	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/task"
 )
 
-func RunGoal(ctx *location.Location, name string) error {
-	branch := name
-	wtPath := ctx.WorktreePath(name)
+// Run sets up and launches a Claude Code session for the given branch.
+// For root tasks (no dots in branch), a planning-focused session is started.
+// For child tasks, the task file is read from the parent's tasks dir.
+func Run(ctx *location.Location, branch string) error {
+	parentBranch := paths.ParentBranch(branch)
+	taskID := paths.BranchID(branch)
+
+	var t *task.Task
+	if parentBranch != "" {
+		tasksDir := paths.TasksDir(ctx.RootRepo, parentBranch)
+		taskData, err := os.ReadFile(filepath.Join(tasksDir, taskID+".json"))
+		if err != nil {
+			return fmt.Errorf("reading task file: %w", err)
+		}
+		t = &task.Task{}
+		if err := json.Unmarshal(taskData, t); err != nil {
+			return fmt.Errorf("parsing task file: %w", err)
+		}
+		if t.Status != task.StatusCompleted {
+			t.Status = task.StatusActive
+			if err := t.WriteToFile(tasksDir); err != nil {
+				return fmt.Errorf("updating task status: %w", err)
+			}
+		}
+	}
+
+	wtPath := paths.Worktree(ctx.RootRepo, branch)
 	created, err := git.CreateWorktree(ctx.RootRepo, wtPath, branch, git.DefaultBranch(ctx.RootRepo))
 	if err != nil {
-		return fmt.Errorf("creating goal worktree: %w", err)
+		return fmt.Errorf("creating worktree: %w", err)
 	}
 
 	success := false
@@ -30,9 +55,9 @@ func RunGoal(ctx *location.Location, name string) error {
 		}
 	}()
 
-	spacePath := paths.GoalWorkspace(ctx.RootRepo, name)
+	spacePath := paths.Workspace(ctx.RootRepo, branch)
 	if err := os.MkdirAll(spacePath, 0755); err != nil {
-		return fmt.Errorf("creating goal workspace: %w", err)
+		return fmt.Errorf("creating workspace: %w", err)
 	}
 
 	wsLink := filepath.Join(wtPath, "workspace")
@@ -42,7 +67,15 @@ func RunGoal(ctx *location.Location, name string) error {
 		}
 	}
 
-	if err := os.WriteFile(filepath.Join(wtPath, "CLAUDE.md"), []byte(agent.GoalClaudeMD(name)), 0644); err != nil {
+	var claudeMD string
+	if t == nil {
+		claudeMD = agent.RootTaskClaudeMD(branch)
+	} else {
+		parentContext := readParentContext(ctx.RootRepo, parentBranch)
+		claudeMD = agent.TaskClaudeMD(branch, parentContext, t)
+	}
+
+	if err := os.WriteFile(filepath.Join(wtPath, "CLAUDE.md"), []byte(claudeMD), 0644); err != nil {
 		return fmt.Errorf("writing CLAUDE.md: %w", err)
 	}
 
@@ -62,63 +95,13 @@ func RunGoal(ctx *location.Location, name string) error {
 	return ExecClaude(wtPath)
 }
 
-func RunTask(ctx *location.Location, goalBranch, taskID string) error {
-	spacePath := paths.GoalWorkspace(ctx.RootRepo, goalBranch)
-
-	taskData, err := os.ReadFile(filepath.Join(spacePath, "tasks", taskID+".json"))
+func readParentContext(rootRepo, parentBranch string) string {
+	planPath := filepath.Join(paths.Workspace(rootRepo, parentBranch), "plan.md")
+	content, err := os.ReadFile(planPath)
 	if err != nil {
-		return fmt.Errorf("reading task file: %w", err)
+		return ""
 	}
-	var t task.Task
-	if err := json.Unmarshal(taskData, &t); err != nil {
-		return fmt.Errorf("parsing task file: %w", err)
-	}
-
-	if t.Status != task.StatusCompleted {
-		t.Status = task.StatusActive
-		if err := t.WriteToFile(filepath.Join(spacePath, "tasks")); err != nil {
-			return fmt.Errorf("updating task status: %w", err)
-		}
-	}
-
-	branch := fmt.Sprintf("%s.%s", goalBranch, t.ID)
-	wtPath := ctx.WorktreePath(branch)
-	created, err := git.CreateWorktree(ctx.RootRepo, wtPath, branch, git.DefaultBranch(ctx.RootRepo))
-	if err != nil {
-		return fmt.Errorf("creating worktree: %w", err)
-	}
-
-	success := false
-	defer func() {
-		if created && !success {
-			_ = git.RemoveWorktree(ctx.RootRepo, wtPath)
-		}
-	}()
-
-	tSpacePath := paths.TaskWorkspace(ctx.RootRepo, goalBranch, t.ID)
-	if err := os.MkdirAll(tSpacePath, 0755); err != nil {
-		return fmt.Errorf("creating task workspace: %w", err)
-	}
-
-	wsLink := filepath.Join(wtPath, "workspace")
-	if _, err := os.Lstat(wsLink); os.IsNotExist(err) {
-		if err := os.Symlink(tSpacePath, wsLink); err != nil {
-			return fmt.Errorf("creating workspace symlink: %w", err)
-		}
-	}
-
-	goalPath := filepath.Join(spacePath, "goal.md")
-	goal, err := os.ReadFile(goalPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "warning: could not read %s: %v\n", goalPath, err)
-	}
-	claudeMD := agent.TaskClaudeMD(goalBranch, string(goal), &t)
-	if err := os.WriteFile(filepath.Join(wtPath, "CLAUDE.md"), []byte(claudeMD), 0644); err != nil {
-		return fmt.Errorf("writing CLAUDE.md: %w", err)
-	}
-
-	success = true
-	return ExecClaude(wtPath)
+	return strings.TrimSpace(string(content))
 }
 
 func ExecClaude(wtPath string) error {

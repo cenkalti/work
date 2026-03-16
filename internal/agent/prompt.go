@@ -10,42 +10,42 @@ import (
 	"github.com/cenkalti/work/internal/task"
 )
 
-//go:embed goal.md.tmpl
-var goalTmpl string
+//go:embed root.md.tmpl
+var rootTmpl string
 
 //go:embed task.md.tmpl
 var taskTmpl string
 
-var goalTemplate = template.Must(template.New("goal").Parse(goalTmpl))
+var rootTemplate = template.Must(template.New("root").Parse(rootTmpl))
 
 var taskTemplate = template.Must(template.New("task").Funcs(template.FuncMap{
 	"join":      strings.Join,
 	"trimSpace": strings.TrimSpace,
 }).Parse(taskTmpl))
 
-type goalData struct {
-	GoalBranch string
+type rootData struct {
+	Branch string
 }
 
 type taskData struct {
-	GoalBranch string
-	Goal       string
-	Task       *task.Task
+	Branch        string
+	ParentContext string
+	Task          *task.Task
 }
 
-// GoalClaudeMD returns the CLAUDE.md content written into goal worktrees so Claude knows about work commands.
-func GoalClaudeMD(goalBranch string) string {
+// RootTaskClaudeMD returns the CLAUDE.md content for root task worktrees.
+func RootTaskClaudeMD(branch string) string {
 	var buf bytes.Buffer
-	if err := goalTemplate.Execute(&buf, goalData{GoalBranch: goalBranch}); err != nil {
+	if err := rootTemplate.Execute(&buf, rootData{Branch: branch}); err != nil {
 		panic(fmt.Sprintf("bug: template execution failed: %v", err))
 	}
 	return buf.String()
 }
 
-// TaskClaudeMD returns the CLAUDE.md content written into task worktrees.
-func TaskClaudeMD(goalBranch, goal string, t *task.Task) string {
+// TaskClaudeMD returns the CLAUDE.md content for child task worktrees.
+func TaskClaudeMD(branch, parentContext string, t *task.Task) string {
 	var buf bytes.Buffer
-	if err := taskTemplate.Execute(&buf, taskData{GoalBranch: goalBranch, Goal: goal, Task: t}); err != nil {
+	if err := taskTemplate.Execute(&buf, taskData{Branch: branch, ParentContext: parentContext, Task: t}); err != nil {
 		panic(fmt.Sprintf("bug: template execution failed: %v", err))
 	}
 	return buf.String()

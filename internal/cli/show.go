@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cenkalti/work/internal/task"
 	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -20,11 +20,13 @@ func showCmd() *cobra.Command {
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			loc := detectLocation(cmd)
-			goal, taskID := loc.ResolveName(args[0])
-			if taskID == "" {
-				return fmt.Errorf("%q is not a task; use 'goal.task-id' or run from a goal worktree", args[0])
+			branch := loc.ResolveName(args[0])
+			parent := paths.ParentBranch(branch)
+			if parent == "" {
+				return fmt.Errorf("%q is a root task and has no task file; use 'task.subtask' notation or run from a task worktree", args[0])
 			}
-			return runShow(paths.TasksDir(loc.RootRepo, goal), taskID)
+			taskID := paths.BranchID(branch)
+			return runShow(paths.TasksDir(loc.RootRepo, parent), taskID)
 		},
 	}
 }

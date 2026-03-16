@@ -1,33 +1,38 @@
 package paths
 
-import "path/filepath"
+import (
+	"path/filepath"
+	"strings"
+)
 
-// WorktreeRoot returns the path to the root directory containing all worktrees.
 func WorktreeRoot(root string) string {
 	return filepath.Join(root, ".work", "tree")
 }
 
-// GoalWorktree returns the path to a goal's worktree directory.
-func GoalWorktree(root, goal string) string {
-	return filepath.Join(root, ".work", "tree", goal)
+func Worktree(root, branch string) string {
+	return filepath.Join(root, ".work", "tree", branch)
 }
 
-// TaskWorktree returns the path to a task's worktree directory.
-func TaskWorktree(root, goal, taskID string) string {
-	return filepath.Join(root, ".work", "tree", goal+"."+taskID)
+func Workspace(root, branch string) string {
+	return filepath.Join(root, ".work", "space", branch)
 }
 
-// GoalWorkspace returns the path to a goal's workspace directory.
-func GoalWorkspace(root, goal string) string {
-	return filepath.Join(root, ".work", "space", goal)
+func TasksDir(root, branch string) string {
+	return filepath.Join(Workspace(root, branch), "tasks")
 }
 
-// TaskWorkspace returns the path to a task's workspace directory.
-func TaskWorkspace(root, goal, taskID string) string {
-	return filepath.Join(root, ".work", "space", goal+"."+taskID)
+// ParentBranch returns everything before the last dot. Returns "" for root tasks.
+func ParentBranch(branch string) string {
+	if i := strings.LastIndex(branch, "."); i >= 0 {
+		return branch[:i]
+	}
+	return ""
 }
 
-// TasksDir returns the tasks directory for a goal.
-func TasksDir(root, goal string) string {
-	return filepath.Join(GoalWorkspace(root, goal), "tasks")
+// BranchID returns the last component after the last dot. Returns the full branch for root tasks.
+func BranchID(branch string) string {
+	if i := strings.LastIndex(branch, "."); i >= 0 {
+		return branch[i+1:]
+	}
+	return branch
 }
