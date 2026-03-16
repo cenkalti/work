@@ -3,6 +3,7 @@ package mcpserver
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/cenkalti/work/internal/task"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -80,6 +81,18 @@ func createTaskTool(tasksDir string) (mcp.Tool, server.ToolHandlerFunc) {
 			Description: description,
 			Acceptance:  acceptance,
 			Context:     taskContext,
+		}
+
+		existing, err := task.LoadAll(tasksDir)
+		if err != nil && !os.IsNotExist(err) {
+			return mcp.NewToolResultError(fmt.Sprintf("loading tasks: %v", err)), nil
+		}
+		if existing == nil {
+			existing = make(map[string]*task.Task)
+		}
+		existing[t.ID] = t
+		if err := task.DetectCycle(existing); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 
 		if err := t.WriteToFile(tasksDir); err != nil {

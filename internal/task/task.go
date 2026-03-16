@@ -54,6 +54,43 @@ func LoadAll(dir string) (map[string]*Task, error) {
 	return tasks, nil
 }
 
+// DetectCycle checks for circular dependencies in the given task map.
+// Returns an error describing the cycle if one is found.
+func DetectCycle(tasks map[string]*Task) error {
+	visited := make(map[string]bool)
+	inStack := make(map[string]bool)
+
+	var dfs func(id string, path []string) error
+	dfs = func(id string, path []string) error {
+		if inStack[id] {
+			cycle := append(path, id)
+			return fmt.Errorf("circular dependency: %s", strings.Join(cycle, " → "))
+		}
+		if visited[id] {
+			return nil
+		}
+		visited[id] = true
+		inStack[id] = true
+		t, ok := tasks[id]
+		if ok {
+			for _, dep := range t.DependsOn {
+				if err := dfs(dep, append(path, id)); err != nil {
+					return err
+				}
+			}
+		}
+		inStack[id] = false
+		return nil
+	}
+
+	for id := range tasks {
+		if err := dfs(id, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (t *Task) WriteToFile(dir string) error {
 	if !validID.MatchString(t.ID) {
 		return fmt.Errorf("invalid task ID %q: must be kebab-case (lowercase alphanumeric and hyphens)", t.ID)
