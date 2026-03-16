@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/cenkalti/work/internal/git"
+	"github.com/cenkalti/work/internal/location"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +41,11 @@ func worktreeCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	root := detectLocation(cmd).WorktreeRoot()
+	loc := detectLocation(cmd)
+	if loc.Type == location.Goal || loc.Type == location.Task {
+		return listTaskIDsFiltered(loc.TasksDir(), nil), cobra.ShellCompDirectiveNoFileComp
+	}
+	root := loc.WorktreeRoot()
 	worktrees, err := git.ListWorktrees(root)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
