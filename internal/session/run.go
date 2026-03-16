@@ -6,10 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"syscall"
 
-	"github.com/cenkalti/work/internal/agent"
 	"github.com/cenkalti/work/internal/git"
 	"github.com/cenkalti/work/internal/location"
 	"github.com/cenkalti/work/internal/paths"
@@ -18,27 +16,14 @@ import (
 
 // Run sets up and launches a Claude Code session for the given branch.
 // For root tasks (no dots in branch), a planning-focused session is started.
-// For child tasks, the task file is read from the parent's tasks dir.
+// For child tasks, the task file is read from the parent's tasks dir and marked active.
 func Run(ctx *location.Location, branch string) error {
 	parentBranch := paths.ParentBranch(branch)
 	taskID := paths.BranchID(branch)
 
-	var t *task.Task
 	if parentBranch != "" {
-		tasksDir := paths.TasksDir(ctx.RootRepo, parentBranch)
-		taskData, err := os.ReadFile(filepath.Join(tasksDir, taskID+".json"))
-		if err != nil {
-			return fmt.Errorf("reading task file: %w", err)
-		}
-		t = &task.Task{}
-		if err := json.Unmarshal(taskData, t); err != nil {
-			return fmt.Errorf("parsing task file: %w", err)
-		}
-		if t.Status != task.StatusCompleted {
-			t.Status = task.StatusActive
-			if err := t.WriteToFile(tasksDir); err != nil {
-				return fmt.Errorf("updating task status: %w", err)
-			}
+		if err := setTaskActive(paths.TasksDir(ctx.RootRepo, parentBranch), taskID); err != nil {
+			return err
 		}
 	}
 
@@ -67,18 +52,6 @@ func Run(ctx *location.Location, branch string) error {
 		}
 	}
 
-	var claudeMD string
-	if t == nil {
-		claudeMD = agent.RootTaskClaudeMD(branch)
-	} else {
-		parentContext := readParentContext(ctx.RootRepo, parentBranch)
-		claudeMD = agent.TaskClaudeMD(branch, parentContext, t)
-	}
-
-	if err := os.WriteFile(filepath.Join(wtPath, "CLAUDE.md"), []byte(claudeMD), 0644); err != nil {
-		return fmt.Errorf("writing CLAUDE.md: %w", err)
-	}
-
 	mcpJSON := `{
   "mcpServers": {
     "work": {
@@ -95,13 +68,24 @@ func Run(ctx *location.Location, branch string) error {
 	return ExecClaude(wtPath)
 }
 
-func readParentContext(rootRepo, parentBranch string) string {
-	planPath := filepath.Join(paths.Workspace(rootRepo, parentBranch), "plan.md")
-	content, err := os.ReadFile(planPath)
+func setTaskActive(tasksDir, taskID string) error {
+	taskFile := filepath.Join(tasksDir, taskID+".json")
+	data, err := os.ReadFile(taskFile)
 	if err != nil {
-		return ""
+		return fmt.Errorf("reading task file: %w", err)
 	}
-	return strings.TrimSpace(string(content))
+	var t task.Task
+	if err := json.Unmarshal(data, &t); err != nil {
+		return fmt.Errorf("parsing task file: %w", err)
+	}
+	if t.Status == task.StatusCompleted {
+		return nil
+	}
+	t.Status = task.StatusActive
+	if err := t.WriteToFile(tasksDir); err != nil {
+		return fmt.Errorf("updating task status: %w", err)
+	}
+	return nil
 }
 
 func ExecClaude(wtPath string) error {

@@ -20,6 +20,7 @@ func Root() *cobra.Command {
 		removeCmd(),
 		cdCmd(),
 		mcpCmd(),
+		contextCmd(),
 	} {
 		c.GroupID = "worktree"
 		cmd.AddCommand(c)

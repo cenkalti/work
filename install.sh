@@ -16,9 +16,37 @@ else
   echo "Shell integration already in ~/.zshrc"
 fi
 
-# Copy slash commands
-echo "Copying slash commands..."
+# Symlink slash commands
+echo "Symlinking slash commands..."
 mkdir -p ~/.claude/commands
-cp "${REPO_DIR}/commands/"*.md ~/.claude/commands/
+for cmd in "${REPO_DIR}/commands/"*.md; do
+  ln -sf "$cmd" ~/.claude/commands/
+done
+
+# Install SessionStart hook into ~/.claude/settings.json
+echo "Installing work context hook into ~/.claude/settings.json..."
+python3 - <<'EOF'
+import json, os, sys
+
+path = os.path.expanduser("~/.claude/settings.json")
+try:
+    with open(path) as f:
+        settings = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    settings = {}
+
+session_start = settings.setdefault("hooks", {}).setdefault("SessionStart", [])
+for entry in session_start:
+    for h in entry.get("hooks", []):
+        if h.get("command") == "work context":
+            print("  work context hook already installed")
+            sys.exit(0)
+
+session_start.append({"matcher": "", "hooks": [{"type": "command", "command": "work context"}]})
+os.makedirs(os.path.dirname(path), exist_ok=True)
+with open(path, "w") as f:
+    json.dump(settings, f, indent=2)
+print("  Added SessionStart hook to ~/.claude/settings.json")
+EOF
 
 echo "Done. Restart your shell or run: source ~/.zshrc"
