@@ -14,9 +14,11 @@ func removeCmd() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:               "rm <name>",
-		Short:             "Remove a goal or task worktree and branch",
-		Long:              "If name contains a dot (goal.task) or you're in a goal worktree, removes a task.\nOtherwise removes a goal.",
+		Use:   "rm <name>",
+		Short: "Remove a worktree and its branch",
+		Long: `work rm <goal>          # remove goal worktree and branch
+work rm <task>          # remove task worktree and branch (from goal worktree)
+work rm <goal.task>     # remove task worktree and branch`,
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {

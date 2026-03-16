@@ -10,9 +10,12 @@ import (
 
 func runCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:               "run [name]",
-		Short:             "Start a Claude Code session for a goal or task",
-		Long:              "If name contains a dot (goal.task) or you're in a goal worktree, runs a task.\nOtherwise runs a goal.\nWith no argument from a goal or task worktree, re-attaches Claude Code to the current worktree.",
+		Use:   "run [name]",
+		Short: "Start a Claude Code session",
+		Long: `work run                # start session in current worktree
+work run <goal>         # create goal worktree and start session
+work run <task>         # create task worktree and start session (from goal worktree)
+work run <goal.task>    # create task worktree and start session`,
 		Args:              cobra.MaximumNArgs(1),
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {

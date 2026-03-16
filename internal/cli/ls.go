@@ -27,7 +27,7 @@ func statusOrder(s string) int {
 func listCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "ls [goal]",
-		Short: "List goals (from root) or tasks (from worktree or with arg)",
+		Short: "List goals or tasks",
 		Args:  cobra.MaximumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) > 0 {

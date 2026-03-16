@@ -11,22 +11,22 @@ func Root() *cobra.Command {
 		PersistentPreRunE: persistWorkContext,
 	}
 
-	generalGroup := &cobra.Group{ID: "general", Title: "General Commands:"}
+	worktreeGroup := &cobra.Group{ID: "worktree", Title: "Worktree Commands:"}
 	taskGroup := &cobra.Group{ID: "task", Title: "Task Commands:"}
-	cmd.AddGroup(generalGroup, taskGroup)
+	cmd.AddGroup(worktreeGroup, taskGroup)
 
 	for _, c := range []*cobra.Command{
 		runCmd(),
-		listCmd(),
 		removeCmd(),
 		cdCmd(),
 		mcpCmd(),
 	} {
-		c.GroupID = "general"
+		c.GroupID = "worktree"
 		cmd.AddCommand(c)
 	}
 
 	for _, c := range []*cobra.Command{
+		listCmd(),
 		showCmd(),
 		treeCmd(),
 		readyCmd(),
