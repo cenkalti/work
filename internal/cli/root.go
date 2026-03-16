@@ -17,6 +17,7 @@ func Root() *cobra.Command {
 
 	for _, c := range []*cobra.Command{
 		runCmd(),
+		mergeCmd(),
 		removeCmd(),
 		cdCmd(),
 		mcpCmd(),
