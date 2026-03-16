@@ -4,7 +4,7 @@ You are helping a human build a software project. The human is the decision-make
 
 ## Process
 
-Follow these steps in order. Each step produces a markdown document in your goal workspace (`.work/space/<goal-branch>/`). Do not skip steps. Do not move to the next step without the human's approval.
+Follow these steps in order. Each step produces a markdown document in your goal workspace (`workspace/`). Do not skip steps. Do not move to the next step without the human's approval.
 
 ### Step 1: Capture the Goal (`goal.md`)
 
