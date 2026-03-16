@@ -48,7 +48,7 @@ func TestWriteToFile_IDValidation(t *testing.T) {
 		"abc-123-def",
 	}
 	for _, id := range valid {
-		tk := &Task{ID: id, TaskSummary: "test"}
+		tk := &Task{ID: id, Summary: "test"}
 		if err := tk.WriteToFile(dir); err != nil {
 			t.Errorf("valid ID %q rejected: %v", id, err)
 		}
@@ -66,7 +66,7 @@ func TestWriteToFile_IDValidation(t *testing.T) {
 		"trailing-hyphen-",
 	}
 	for _, id := range invalid {
-		tk := &Task{ID: id, TaskSummary: "test"}
+		tk := &Task{ID: id, Summary: "test"}
 		if err := tk.WriteToFile(dir); err == nil {
 			t.Errorf("invalid ID %q should have been rejected", id)
 		}

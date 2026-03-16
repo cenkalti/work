@@ -4,6 +4,7 @@ import (
 	"os"
 
 	mcpserver "github.com/cenkalti/work/internal/mcp"
+	"github.com/cenkalti/work/internal/paths"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/spf13/cobra"
 )
@@ -13,13 +14,12 @@ func mcpCmd() *cobra.Command {
 		Use:   "mcp",
 		Short: "Start MCP server for task creation",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := workContext(cmd)
-			goal, err := ctx.ResolveGoal("")
+			loc := detectLocation(cmd)
+			goal, err := loc.ResolveGoal("")
 			if err != nil {
 				return err
 			}
-			tasksDir := tasksDirFor(ctx.RootRepo, goal)
-			s := mcpserver.NewServer(tasksDir)
+			s := mcpserver.NewServer(paths.TasksDir(loc.RootRepo, goal))
 			return server.NewStdioServer(s).Listen(cmd.Context(), os.Stdin, os.Stdout)
 		},
 	}

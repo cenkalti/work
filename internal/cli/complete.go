@@ -7,19 +7,20 @@ import (
 	"path/filepath"
 
 	"github.com/cenkalti/work/internal/task"
+	"github.com/cenkalti/work/internal/paths"
 	"github.com/spf13/cobra"
 )
 
 func completeCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "complete <name>",
-		Short: "Mark a task as completed",
-		Args:  cobra.ExactArgs(1),
+		Use:               "complete <name>",
+		Short:             "Mark a task as completed",
+		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := workContext(cmd)
-			goal, taskID, _ := ctx.ResolveName(args[0])
-			return runComplete(tasksDirFor(ctx.RootRepo, goal), taskID)
+			loc := detectLocation(cmd)
+			goal, taskID := loc.ResolveName(args[0])
+			return runComplete(paths.TasksDir(loc.RootRepo, goal), taskID)
 		},
 	}
 }

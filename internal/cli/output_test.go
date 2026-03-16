@@ -42,11 +42,11 @@ func captureStdout(t *testing.T, f func()) string {
 }
 
 var testTasks = []*task.Task{
-	{ID: "task-a", TaskSummary: "A", Status: task.StatusPending},
-	{ID: "task-b", TaskSummary: "B", Status: task.StatusActive},
-	{ID: "task-c", TaskSummary: "C", Status: task.StatusCompleted},
-	{ID: "task-d", TaskSummary: "D", Status: task.StatusPending, DependsOn: []string{"task-a"}},
-	{ID: "task-e", TaskSummary: "E", Status: task.StatusPending, DependsOn: []string{"task-c"}},
+	{ID: "task-a", Summary: "A", Status: task.StatusPending},
+	{ID: "task-b", Summary: "B", Status: task.StatusActive},
+	{ID: "task-c", Summary: "C", Status: task.StatusCompleted},
+	{ID: "task-d", Summary: "D", Status: task.StatusPending, DependsOn: []string{"task-a"}},
+	{ID: "task-e", Summary: "E", Status: task.StatusPending, DependsOn: []string{"task-c"}},
 }
 
 func TestListTasks(t *testing.T) {
@@ -118,7 +118,7 @@ func TestRunReady(t *testing.T) {
 
 func TestRunReady_AllComplete(t *testing.T) {
 	tasks := []*task.Task{
-		{ID: "task-a", TaskSummary: "A", Status: task.StatusCompleted},
+		{ID: "task-a", Summary: "A", Status: task.StatusCompleted},
 	}
 	dir := writeTasks(t, tasks)
 	out := captureStdout(t, func() { runReady(dir) })

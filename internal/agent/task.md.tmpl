@@ -1,0 +1,41 @@
+{{- if .Goal -}}
+# Goal
+
+{{trimSpace .Goal}}
+
+{{end -}}
+# Your Task
+
+**ID:** {{.Task.ID}}
+
+**Summary:** {{.Task.Summary}}
+
+{{- if .Task.Description}}
+
+**Description:** {{.Task.Description}}
+{{- end}}
+{{- if .Task.Files}}
+
+**Files:** {{join .Task.Files ", "}}
+{{- end}}
+{{- if .Task.Acceptance}}
+
+**Acceptance Criteria:**
+{{- range .Task.Acceptance}}
+- {{.}}
+{{- end}}
+{{end}}
+{{- if .Task.Context}}
+**Context:** {{.Task.Context}}
+
+{{end -}}
+## Workspace
+
+Your workspace is at `workspace/` (symlinked to `.work/space/{{.GoalBranch}}.{{.Task.ID}}/`).
+Use it for scratch files, intermediate outputs, and notes.
+
+**Work Log:** `workspace/log.md`
+
+## Cross-Task Context
+
+You can read other tasks' workspaces via `.work/space/`.

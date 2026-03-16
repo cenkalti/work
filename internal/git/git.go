@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 )
 
@@ -98,10 +99,8 @@ func DeleteBranch(repo, branch string) error {
 
 // RemoveWorktreeIfExists removes a git worktree by path, succeeding silently if it does not exist.
 func RemoveWorktreeIfExists(repo, worktreePath string) error {
-	for _, p := range ListWorktrees(repo) {
-		if p == worktreePath {
-			return RemoveWorktree(repo, worktreePath)
-		}
+	if slices.Contains(ListWorktrees(repo), worktreePath) {
+		return RemoveWorktree(repo, worktreePath)
 	}
 	return nil
 }

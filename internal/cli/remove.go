@@ -14,23 +14,23 @@ func removeCmd() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "remove <name>",
-		Short: "Remove a goal or task worktree and branch",
-		Long:  "If name contains a dot (goal.task) or you're in a goal worktree, removes a task.\nOtherwise removes a goal.",
-		Args:  cobra.ExactArgs(1),
+		Use:               "remove <name>",
+		Short:             "Remove a goal or task worktree and branch",
+		Long:              "If name contains a dot (goal.task) or you're in a goal worktree, removes a task.\nOtherwise removes a goal.",
+		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := workContext(cmd)
-			goal, taskID, isTask := ctx.ResolveName(args[0])
+			loc := detectLocation(cmd)
+			goal, taskID := loc.ResolveName(args[0])
 
 			var subject, branch, wtPath string
-			if isTask {
+			if taskID != "" {
 				branch = fmt.Sprintf("%s.%s", goal, taskID)
-				wtPath = ctx.WorktreePath(branch)
+				wtPath = loc.WorktreePath(branch)
 				subject = fmt.Sprintf("task %s", taskID)
 			} else {
 				branch = goal
-				wtPath = ctx.WorktreePath(goal)
+				wtPath = loc.WorktreePath(goal)
 				subject = fmt.Sprintf("goal %s", goal)
 			}
 
@@ -44,13 +44,13 @@ func removeCmd() *cobra.Command {
 				}
 			}
 
-			if err := git.RemoveWorktreeIfExists(ctx.RootRepo, wtPath); err != nil {
+			if err := git.RemoveWorktreeIfExists(loc.RootRepo, wtPath); err != nil {
 				return fmt.Errorf("remove worktree: %w", err)
 			}
-			if err := git.DeleteBranchIfExists(ctx.RootRepo, branch); err != nil {
+			if err := git.DeleteBranchIfExists(loc.RootRepo, branch); err != nil {
 				return fmt.Errorf("delete branch: %w", err)
 			}
-			fmt.Printf("%s removed.\n", strings.Title(subject))
+			fmt.Printf("%s removed.\n", strings.ToUpper(subject[:1])+subject[1:])
 			return nil
 		},
 	}

@@ -74,7 +74,7 @@ func createTaskTool(tasksDir string) (mcp.Tool, server.ToolHandlerFunc) {
 
 		t := &task.Task{
 			ID:          id,
-			TaskSummary: summary,
+			Summary: summary,
 			DependsOn:   dependsOn,
 			Status:      task.StatusPending,
 			Files:       files,

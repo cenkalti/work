@@ -19,9 +19,7 @@ const (
 
 type Task struct {
 	ID          string   `json:"id" yaml:"id"`
-	// TaskSummary is the one-line task description. JSON key is "summary".
-	// Note: existing task JSON files using the old key "task" must be migrated.
-	TaskSummary string   `json:"summary" yaml:"summary"`
+	Summary     string   `json:"summary" yaml:"summary"`
 	DependsOn   []string `json:"depends_on" yaml:"depends_on"`
 	Status      string   `json:"status" yaml:"status"`
 	Files       []string `json:"files" yaml:"files"`

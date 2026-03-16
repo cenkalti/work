@@ -10,7 +10,7 @@ import (
 func TestTaskClaudeMD(t *testing.T) {
 	tk := &task.Task{
 		ID:          "auth-impl",
-		TaskSummary: "implement user authentication",
+		Summary: "implement user authentication",
 		Description: "Add JWT-based auth",
 		Files:       []string{"auth.go", "middleware.go"},
 		Acceptance:  []string{"login works", "tokens expire"},
@@ -35,7 +35,7 @@ func TestTaskClaudeMD(t *testing.T) {
 	}
 
 	// Optional fields absent when empty
-	tkMin := &task.Task{ID: "min", TaskSummary: "minimal task"}
+	tkMin := &task.Task{ID: "min", Summary: "minimal task"}
 	minPrompt := TaskClaudeMD("goal", "", tkMin)
 	if strings.Contains(minPrompt, "# Goal") {
 		t.Error("expected no Goal section when goal is empty")

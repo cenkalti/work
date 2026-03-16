@@ -5,7 +5,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/cenkalti/work/internal/location"
 	"github.com/cenkalti/work/internal/task"
+	"github.com/cenkalti/work/internal/paths"
 	"github.com/spf13/cobra"
 )
 
@@ -31,23 +33,23 @@ func listCmd() *cobra.Command {
 			if len(args) > 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
-			return listGoalWorktreeNames(workContext(cmd).RootRepo), cobra.ShellCompDirectiveNoFileComp
+			return listGoalWorktreeNames(detectLocation(cmd).RootRepo), cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := workContext(cmd)
+			loc := detectLocation(cmd)
 
 			// If explicit goal arg given, list its tasks
 			if len(args) > 0 {
-				return listTasks(tasksDirFor(ctx.RootRepo, args[0]))
+				return listTasks(paths.TasksDir(loc.RootRepo, args[0]))
 			}
 
 			// If in a goal/task worktree, list tasks
-			if ctx.Location == LocationGoal || ctx.Location == LocationTask {
-				return listTasks(ctx.TasksDir())
+			if loc.Type == location.Goal || loc.Type == location.Task {
+				return listTasks(loc.TasksDir())
 			}
 
 			// At root: list goals
-			for _, name := range listGoalWorktreeNames(ctx.RootRepo) {
+			for _, name := range listGoalWorktreeNames(loc.RootRepo) {
 				fmt.Println(name)
 			}
 			return nil

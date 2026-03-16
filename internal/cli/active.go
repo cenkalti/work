@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/cenkalti/work/internal/task"
+	"github.com/cenkalti/work/internal/paths"
 	"github.com/spf13/cobra"
 )
 
@@ -17,20 +18,19 @@ func activeCmd() *cobra.Command {
 			if len(args) > 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
-			return listGoalWorktreeNames(workContext(cmd).RootRepo), cobra.ShellCompDirectiveNoFileComp
+			return listGoalWorktreeNames(detectLocation(cmd).RootRepo), cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := workContext(cmd)
+			loc := detectLocation(cmd)
 			var explicit string
 			if len(args) > 0 {
 				explicit = args[0]
 			}
-			goal, err := ctx.ResolveGoal(explicit)
+			goal, err := loc.ResolveGoal(explicit)
 			if err != nil {
 				return err
 			}
-			tasksDir := tasksDirFor(ctx.RootRepo, goal)
-			tasks, err := task.LoadAll(tasksDir)
+			tasks, err := task.LoadAll(paths.TasksDir(loc.RootRepo, goal))
 			if err != nil {
 				return fmt.Errorf("reading tasks: %w", err)
 			}

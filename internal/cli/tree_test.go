@@ -9,8 +9,8 @@ import (
 
 func TestRunTree_BasicOrder(t *testing.T) {
 	tasks := []*task.Task{
-		{ID: "root-task", TaskSummary: "root"},
-		{ID: "child-task", TaskSummary: "child", DependsOn: []string{"root-task"}},
+		{ID: "root-task", Summary: "root"},
+		{ID: "child-task", Summary: "child", DependsOn: []string{"root-task"}},
 	}
 	dir := writeTasks(t, tasks)
 
@@ -38,9 +38,9 @@ func TestRunTree_BasicOrder(t *testing.T) {
 
 func TestRunTree_FilterByID(t *testing.T) {
 	tasks := []*task.Task{
-		{ID: "task-a", TaskSummary: "A"},
-		{ID: "task-b", TaskSummary: "B", DependsOn: []string{"task-a"}},
-		{ID: "task-c", TaskSummary: "C"},
+		{ID: "task-a", Summary: "A"},
+		{ID: "task-b", Summary: "B", DependsOn: []string{"task-a"}},
+		{ID: "task-c", Summary: "C"},
 	}
 	dir := writeTasks(t, tasks)
 
@@ -63,7 +63,7 @@ func TestRunTree_FilterByID(t *testing.T) {
 
 func TestRunTree_FilterNotFound(t *testing.T) {
 	tasks := []*task.Task{
-		{ID: "task-a", TaskSummary: "A"},
+		{ID: "task-a", Summary: "A"},
 	}
 	dir := writeTasks(t, tasks)
 
@@ -76,9 +76,9 @@ func TestRunTree_FilterNotFound(t *testing.T) {
 func TestRunTree_CircularDependency(t *testing.T) {
 	// task-top has no dependents (it's a root), and depends on task-a which circles back.
 	tasks := []*task.Task{
-		{ID: "task-top", TaskSummary: "top", DependsOn: []string{"task-a"}},
-		{ID: "task-a", TaskSummary: "A", DependsOn: []string{"task-b"}},
-		{ID: "task-b", TaskSummary: "B", DependsOn: []string{"task-a"}},
+		{ID: "task-top", Summary: "top", DependsOn: []string{"task-a"}},
+		{ID: "task-a", Summary: "A", DependsOn: []string{"task-b"}},
+		{ID: "task-b", Summary: "B", DependsOn: []string{"task-a"}},
 	}
 	dir := writeTasks(t, tasks)
 
@@ -93,7 +93,7 @@ func TestRunTree_CircularDependency(t *testing.T) {
 
 func TestRunTree_CompletedAnnotation(t *testing.T) {
 	tasks := []*task.Task{
-		{ID: "done-task", TaskSummary: "done", Status: task.StatusCompleted},
+		{ID: "done-task", Summary: "done", Status: task.StatusCompleted},
 	}
 	dir := writeTasks(t, tasks)
 

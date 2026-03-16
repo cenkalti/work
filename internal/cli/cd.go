@@ -19,9 +19,9 @@ func cdCmd() *cobra.Command {
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
-			ctx := workContext(cmd)
+			loc := detectLocation(cmd)
 
-			wtPath := ctx.WorktreePath(name)
+			wtPath := loc.WorktreePath(name)
 			if _, err := os.Stat(wtPath); err != nil {
 				return fmt.Errorf("worktree not found: %s", wtPath)
 			}
@@ -36,7 +36,7 @@ func worktreeCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	root := workContext(cmd).WorktreeRoot()
+	root := detectLocation(cmd).WorktreeRoot()
 	return listWorktreeNames(root), cobra.ShellCompDirectiveNoFileComp
 }
 

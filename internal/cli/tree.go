@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/cenkalti/work/internal/location"
 	"github.com/cenkalti/work/internal/task"
+	"github.com/cenkalti/work/internal/paths"
 	"github.com/spf13/cobra"
 )
 
@@ -14,43 +16,42 @@ func treeCmd() *cobra.Command {
 		Short: "Show tasks in a dependency tree",
 		Args:  cobra.MaximumNArgs(2),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			ctx := workContext(cmd)
+			loc := detectLocation(cmd)
 			switch len(args) {
 			case 0:
-				if ctx.Location == LocationGoal || ctx.Location == LocationTask {
-					return listTaskIDsFiltered(ctx.TasksDir(), nil), cobra.ShellCompDirectiveNoFileComp
+				if loc.Type == location.Goal || loc.Type == location.Task {
+					return listTaskIDsFiltered(loc.TasksDir(), nil), cobra.ShellCompDirectiveNoFileComp
 				}
-				return listGoalWorktreeNames(ctx.RootRepo), cobra.ShellCompDirectiveNoFileComp
+				return listGoalWorktreeNames(loc.RootRepo), cobra.ShellCompDirectiveNoFileComp
 			case 1:
-				if ctx.Location == LocationRoot {
-					tasksDir := tasksDirFor(ctx.RootRepo, args[0])
-					return listTaskIDsFiltered(tasksDir, nil), cobra.ShellCompDirectiveNoFileComp
+				if loc.Type == location.Root {
+					return listTaskIDsFiltered(paths.TasksDir(loc.RootRepo, args[0]), nil), cobra.ShellCompDirectiveNoFileComp
 				}
 			}
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := workContext(cmd)
+			loc := detectLocation(cmd)
 
 			var goal, filterID string
 			switch {
 			case len(args) == 2:
 				goal = args[0]
 				filterID = args[1]
-			case len(args) == 1 && (ctx.Location == LocationGoal || ctx.Location == LocationTask):
-				goal = ctx.GoalBranch
+			case len(args) == 1 && (loc.Type == location.Goal || loc.Type == location.Task):
+				goal = loc.Goal
 				filterID = args[0]
 			case len(args) == 1:
 				goal = args[0]
 			default:
 				var err error
-				goal, err = ctx.ResolveGoal("")
+				goal, err = loc.ResolveGoal("")
 				if err != nil {
 					return err
 				}
 			}
 
-			return runTree(tasksDirFor(ctx.RootRepo, goal), filterID)
+			return runTree(paths.TasksDir(loc.RootRepo, goal), filterID)
 		},
 	}
 }

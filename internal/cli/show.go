@@ -7,24 +7,24 @@ import (
 	"path/filepath"
 
 	"github.com/cenkalti/work/internal/task"
+	"github.com/cenkalti/work/internal/paths"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
 func showCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "show <name>",
-		Short: "Show task details as YAML",
-		Args:  cobra.ExactArgs(1),
+		Use:               "show <name>",
+		Short:             "Show task details as YAML",
+		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := workContext(cmd)
-			goal, taskID, isTask := ctx.ResolveName(args[0])
-			if !isTask {
+			loc := detectLocation(cmd)
+			goal, taskID := loc.ResolveName(args[0])
+			if taskID == "" {
 				return fmt.Errorf("%q is not a task; use 'goal.task-id' or run from a goal worktree", args[0])
 			}
-			tasksDir := tasksDirFor(ctx.RootRepo, goal)
-			return runShow(tasksDir, taskID)
+			return runShow(paths.TasksDir(loc.RootRepo, goal), taskID)
 		},
 	}
 }
