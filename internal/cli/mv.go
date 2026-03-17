@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/cenkalti/work/internal/git"
-	"github.com/cenkalti/work/internal/location"
 	"github.com/cenkalti/work/internal/paths"
 	"github.com/spf13/cobra"
 )
@@ -22,12 +21,33 @@ work mv foo.a foo.b        # rename subtask
 work mv foo.a bar.a        # move subtask to different parent
 work mv foo .              # move task back to root workspace
 
+Must be run from the repo root. Task names are absolute (dot-separated).
 Use "." to refer to the root repo (no task).`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			loc := detectLocation(cmd)
-			src := resolveMoveName(loc, args[0])
-			dst := resolveMoveName(loc, args[1])
+			if !loc.IsRoot() {
+				return fmt.Errorf("must be run from the repo root")
+			}
+
+			src := args[0]
+			dst := args[1]
+
+			// Validate: "." is allowed, otherwise must be a valid absolute name (no relative resolution).
+			if src != "." && strings.Contains(src, "..") {
+				return fmt.Errorf("invalid source name: %s", src)
+			}
+			if dst != "." && strings.Contains(dst, "..") {
+				return fmt.Errorf("invalid destination name: %s", dst)
+			}
+
+			// Normalize "." to empty string internally.
+			if src == "." {
+				src = ""
+			}
+			if dst == "." {
+				dst = ""
+			}
 
 			if src == dst {
 				return fmt.Errorf("source and destination are the same")
@@ -35,9 +55,8 @@ Use "." to refer to the root repo (no task).`,
 
 			root := loc.RootRepo
 
-			// Collect all branches that need renaming (src + children).
-			branches, err := collectBranches(root, src)
-			if err != nil {
+			// Preflight checks.
+			if err := validateMove(root, src, dst); err != nil {
 				return err
 			}
 
@@ -49,6 +68,12 @@ Use "." to refer to the root repo (no task).`,
 			// Move to root (dst == "")
 			if dst == "" {
 				return moveToRoot(root, src)
+			}
+
+			// Collect all branches that need renaming (src + children).
+			branches, err := collectBranches(root, src)
+			if err != nil {
+				return err
 			}
 
 			// General move: rename branches, move worktrees, move workspaces.
@@ -70,13 +95,68 @@ Use "." to refer to the root repo (no task).`,
 	}
 }
 
-// resolveMoveName resolves a move argument to a branch name.
-// "." means root (empty string). Otherwise, uses loc.ResolveName.
-func resolveMoveName(loc *location.Location, name string) string {
-	if name == "." {
-		return ""
+// validateMove checks preconditions before performing any move operation.
+func validateMove(root, src, dst string) error {
+	if src == "" {
+		// Moving from root: workspace must exist.
+		wsPath := filepath.Join(root, "workspace")
+		if _, err := os.Lstat(wsPath); err != nil {
+			return fmt.Errorf("no workspace found at root")
+		}
+		// Destination workspace must not exist.
+		dstSpace := paths.Workspace(root, dst)
+		if _, err := os.Stat(dstSpace); err == nil {
+			return fmt.Errorf("destination workspace already exists: %s", dst)
+		}
+		// Destination worktree must not exist.
+		dstWT := paths.Worktree(root, dst)
+		if _, err := os.Stat(dstWT); err == nil {
+			return fmt.Errorf("destination worktree already exists: %s", dst)
+		}
+		return nil
 	}
-	return loc.ResolveName(name)
+
+	if dst == "" {
+		// Moving to root: source workspace must exist.
+		srcSpace := paths.Workspace(root, src)
+		if _, err := os.Stat(srcSpace); err != nil {
+			return fmt.Errorf("workspace not found for %s", src)
+		}
+		// Root workspace must not exist.
+		wsPath := filepath.Join(root, "workspace")
+		if _, err := os.Lstat(wsPath); err == nil {
+			return fmt.Errorf("workspace already exists at root; remove it first")
+		}
+		return nil
+	}
+
+	// General move: source workspace or worktree must exist.
+	srcSpace := paths.Workspace(root, src)
+	srcWT := paths.Worktree(root, src)
+	srcSpaceExists := false
+	srcWTExists := false
+	if _, err := os.Stat(srcSpace); err == nil {
+		srcSpaceExists = true
+	}
+	if _, err := os.Stat(srcWT); err == nil {
+		srcWTExists = true
+	}
+	if !srcSpaceExists && !srcWTExists {
+		return fmt.Errorf("source task not found: %s (no workspace or worktree)", src)
+	}
+
+	// Destination workspace must not exist.
+	dstSpace := paths.Workspace(root, dst)
+	if _, err := os.Stat(dstSpace); err == nil {
+		return fmt.Errorf("destination workspace already exists: %s", dst)
+	}
+	// Destination worktree must not exist.
+	dstWT := paths.Worktree(root, dst)
+	if _, err := os.Stat(dstWT); err == nil {
+		return fmt.Errorf("destination worktree already exists: %s", dst)
+	}
+
+	return nil
 }
 
 // collectBranches returns the src branch and all child branches (src.*).
@@ -235,14 +315,7 @@ func moveFromRoot(root, dst string) error {
 // moveToRoot moves a named task's workspace to the root workspace (./workspace).
 func moveToRoot(root, src string) error {
 	srcSpace := paths.Workspace(root, src)
-	if _, err := os.Stat(srcSpace); err != nil {
-		return fmt.Errorf("workspace not found for %s: %w", src, err)
-	}
-
 	wsPath := filepath.Join(root, "workspace")
-	if _, err := os.Lstat(wsPath); err == nil {
-		return fmt.Errorf("workspace already exists at root; remove it first")
-	}
 
 	// Move workspace to root.
 	if err := os.Rename(srcSpace, wsPath); err != nil {
