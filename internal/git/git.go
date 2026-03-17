@@ -87,6 +87,26 @@ func ListWorktrees(repo string) ([]string, error) {
 	return paths, nil
 }
 
+// RenameBranch renames a local git branch.
+func RenameBranch(repo, oldName, newName string) error {
+	cmd := exec.Command("git", "branch", "-m", oldName, newName)
+	cmd.Dir = repo
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git branch rename: %s: %w", string(out), err)
+	}
+	return nil
+}
+
+// MoveWorktree moves a git worktree to a new path.
+func MoveWorktree(repo, oldPath, newPath string) error {
+	cmd := exec.Command("git", "worktree", "move", oldPath, newPath)
+	cmd.Dir = repo
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git worktree move: %s: %w", string(out), err)
+	}
+	return nil
+}
+
 // DeleteBranch deletes a local git branch.
 func DeleteBranch(repo, branch string) error {
 	cmd := exec.Command("git", "branch", "-D", branch)
