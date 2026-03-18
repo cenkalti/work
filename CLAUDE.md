@@ -17,18 +17,24 @@ This installs the binary, adds shell integration to `~/.zshrc`, copies slash com
 
 ## Commands
 
+### Worktree Commands (absolute dot-separated branch names)
+
 ```bash
 work run [name]              # no arg → start session here; name → create worktree and start session
-work ls [task]               # no arg from root → root tasks; from worktree or with arg → subtasks
+work name                    # print current worktree name (. at root)
+work ls                      # list all worktrees
+work mv <src> <dst>          # move/rename task (use . for root)
 work rm <name>               # remove worktree and branch
-work cd [name]               # print worktree path (use with shell integration)
-work context                 # print task context for the current worktree (used by SessionStart hook)
-work mcp                     # start MCP server for task creation (called by .mcp.json)
-work show <name>             # show task details as YAML
-work tree [task] [subtask]   # dependency tree
-work ready [task]            # subtasks with all deps met
-work active [task]           # subtasks currently being worked on
-work complete <name>         # mark task complete
+work cd [name]               # change directory to worktree (requires shell integration)
+```
+
+### Task Commands (relative task IDs in ./workspace/tasks/)
+
+```bash
+work tasks                   # list subtasks (--ready, --active, --blocked, --pending, --completed)
+work show <id>               # show task details as YAML
+work tree [id]               # dependency tree
+work set-status <id> <status> # set task status (pending, active, completed)
 ```
 
 ## Naming and Identifiers
@@ -80,7 +86,7 @@ Work is a multi-task orchestrator for Claude Code. It decomposes plans into task
 
 ### Key packages
 
-- **`internal/cli/`** — Cobra commands. `root.go` wires commands into Worktree and Task groups. `context.go` handles location detection and name resolution.
+- **`internal/cli/`** — Cobra commands. `root.go` wires commands into Worktree and Task groups. `context.go` handles location detection and completion helpers.
 - **`internal/location/`** — Detects current working context from CWD and git branch. `Branch` is the full dot-separated path; empty at the root repo.
 - **`internal/paths/`** — Path construction helpers. `ParentBranch`/`BranchID` split dot-notation branches.
 - **`internal/task/`** — Task data model (ID, summary, depends_on, status, files, description, acceptance, context). Tasks are JSON files in parent workspaces.
@@ -98,4 +104,4 @@ Slash commands live in `commands/` at the repo root. Installed to `~/.claude/com
 
 1. **`commands/work-plan.md`** — `/work-plan`. Human-driven planning session: goal capture, research, plan, task decomposition via the work MCP tool.
 
-2. **`commands/work-execute.md`** — `/work-execute`. Run inside a task's Claude Code session to start working on the assigned task and maintaining a work log.
+2. **`commands/work-execute.md`** — `/work-execute`. Run inside a task's Claude Code session to work on the assigned task and maintain a work log.

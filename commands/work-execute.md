@@ -36,7 +36,7 @@ Implement the task according to the acceptance criteria. As you work:
 ## Step 4: Finish Up
 
 When done:
-- Set status to `completed`
+- Run `work set-status <id> completed` to mark the task done
 - Write a final summary in Progress
 - Clear "What's Left" or note any follow-ups
 - Make sure all acceptance criteria are met
