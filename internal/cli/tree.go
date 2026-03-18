@@ -2,55 +2,31 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 
-	"github.com/cenkalti/work/internal/paths"
 	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
 
 func treeCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "tree [task] [subtask-id]",
-		Short: "Show tasks in a dependency tree",
-		Args:  cobra.MaximumNArgs(2),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			loc := detectLocation(cmd)
-			switch len(args) {
-			case 0:
-				if !loc.IsRoot() {
-					return listTaskIDsFiltered(loc.TasksDir(), nil), cobra.ShellCompDirectiveNoFileComp
-				}
-				return listRootTaskNames(loc.RootRepo), cobra.ShellCompDirectiveNoFileComp
-			case 1:
-				if loc.IsRoot() {
-					return listTaskIDsFiltered(paths.TasksDir(loc.RootRepo, args[0]), nil), cobra.ShellCompDirectiveNoFileComp
-				}
-			}
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		},
+		Use:               "tree [id]",
+		Short:             "Show tasks in a dependency tree",
+		Args:              cobra.MaximumNArgs(1),
+		ValidArgsFunction: taskIDCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			loc := detectLocation(cmd)
-
-			var branch, filterID string
-			var err error
-			switch {
-			case len(args) == 2:
-				branch = loc.ResolveName(args[0])
-				filterID = args[1]
-			case len(args) == 1 && !loc.IsRoot():
-				branch = loc.Branch
-				filterID = args[0]
-			case len(args) == 1:
-				branch = loc.ResolveName(args[0])
-			default:
-				branch, err = loc.ResolveBranch("")
-				if err != nil {
-					return err
-				}
+			cwd, err := os.Getwd()
+			if err != nil {
+				return err
 			}
-
-			return runTree(paths.TasksDir(loc.RootRepo, branch), filterID)
+			tasksDir := filepath.Join(cwd, "workspace", "tasks")
+			var filterID string
+			if len(args) > 0 {
+				filterID = args[0]
+			}
+			return runTree(tasksDir, filterID)
 		},
 	}
 }

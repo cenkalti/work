@@ -13,7 +13,6 @@ func runCmd() *cobra.Command {
 		Short: "Start a Claude Code session",
 		Long: `work run                # start session in current worktree
 work run <task>         # create root task worktree and start session
-work run <subtask>      # create child task worktree and start session (from task worktree)
 work run <task.subtask> # create child task worktree and start session`,
 		Args:              cobra.MaximumNArgs(1),
 		ValidArgsFunction: worktreeCompletionFunc,
@@ -26,8 +25,7 @@ work run <task.subtask> # create child task worktree and start session`,
 				}
 				return session.ExecClaude(cwd)
 			}
-			branch := loc.ResolveName(args[0])
-			return session.Run(loc, branch)
+			return session.Run(loc, args[0])
 		},
 	}
 }

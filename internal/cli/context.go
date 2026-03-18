@@ -75,3 +75,16 @@ func listTaskIDsFiltered(tasksDir string, filter func(*task.Task) bool) []string
 	slices.Sort(ids)
 	return ids
 }
+
+// taskIDCompletionFunc completes task IDs from ./workspace/tasks/ in the current directory.
+func taskIDCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	tasksDir := filepath.Join(cwd, "workspace", "tasks")
+	return listTaskIDsFiltered(tasksDir, nil), cobra.ShellCompDirectiveNoFileComp
+}

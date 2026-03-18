@@ -13,12 +13,7 @@ import (
 func cdCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "cd [name]",
-		Short: "Print the path to a worktree",
-		Long: `work cd                 # print project root
-work cd <task>          # print task worktree path
-work cd <task.subtask>  # print subtask worktree path
-
-Use with shell integration (shell/work.zsh) to cd into worktrees.`,
+		Short: "Change directory to a worktree (requires shell integration)",
 		Args:              cobra.MaximumNArgs(1),
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {

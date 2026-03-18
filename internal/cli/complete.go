@@ -6,26 +6,23 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cenkalti/work/internal/paths"
 	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
 
 func completeCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:               "complete <name>",
+		Use:               "complete <id>",
 		Short:             "Mark a task as completed",
 		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: worktreeCompletionFunc,
+		ValidArgsFunction: taskIDCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			loc := detectLocation(cmd)
-			branch := loc.ResolveName(args[0])
-			parent := paths.ParentBranch(branch)
-			if parent == "" {
-				return fmt.Errorf("%q is a root task and has no task file", args[0])
+			cwd, err := os.Getwd()
+			if err != nil {
+				return err
 			}
-			taskID := paths.BranchID(branch)
-			return runComplete(paths.TasksDir(loc.RootRepo, parent), taskID)
+			tasksDir := filepath.Join(cwd, "workspace", "tasks")
+			return runComplete(tasksDir, args[0])
 		},
 	}
 }

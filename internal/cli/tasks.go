@@ -27,7 +27,7 @@ func statusOrder(s string) int {
 func listCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "tasks",
-		Short: "List tasks in ./workspace/tasks",
+		Short: "List subtasks",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {

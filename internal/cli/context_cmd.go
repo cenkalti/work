@@ -14,8 +14,9 @@ import (
 
 func contextCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "context",
-		Short: "Print task context for the current worktree",
+		Use:    "context",
+		Short:  "Print task context for the current worktree",
+		Hidden: true,
 		Long: `Prints task context to stdout for injection into Claude Code's conversation.
 
 Install in ~/.claude/settings.json to automatically inject context at session start:

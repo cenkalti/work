@@ -2,35 +2,25 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 
-	"github.com/cenkalti/work/internal/paths"
 	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
 
 func activeCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "active [task]",
+		Use:   "active",
 		Short: "List tasks currently being worked on",
-		Args:  cobra.MaximumNArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			if len(args) > 0 {
-				return nil, cobra.ShellCompDirectiveNoFileComp
-			}
-			return listRootTaskNames(detectLocation(cmd).RootRepo), cobra.ShellCompDirectiveNoFileComp
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			loc := detectLocation(cmd)
-			var explicit string
-			if len(args) > 0 {
-				explicit = args[0]
-			}
-			branch, err := loc.ResolveBranch(explicit)
+			cwd, err := os.Getwd()
 			if err != nil {
 				return err
 			}
-			tasks, err := task.LoadAll(paths.TasksDir(loc.RootRepo, branch))
+			tasksDir := filepath.Join(cwd, "workspace", "tasks")
+			tasks, err := task.LoadAll(tasksDir)
 			if err != nil {
 				return fmt.Errorf("reading tasks: %w", err)
 			}

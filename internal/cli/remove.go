@@ -24,7 +24,7 @@ work rm <task.subtask>  # remove child task worktree and branch`,
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			loc := detectLocation(cmd)
-			branch := loc.ResolveName(args[0])
+			branch := args[0]
 			taskID := paths.BranchID(branch)
 			wtPath := loc.WorktreePath(branch)
 
