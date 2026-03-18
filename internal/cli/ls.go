@@ -25,10 +25,10 @@ func statusOrder(s string) int {
 
 func listCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "ls [task]",
+		Use:   "tasks [task]",
 		Short: "List tasks",
-		Long: `work ls              # list root tasks (from root) or subtasks (from task worktree)
-work ls <task>       # list subtasks of a specific task`,
+		Long: `work tasks              # list root tasks (from root) or subtasks (from task worktree)
+work tasks <task>       # list subtasks of a specific task`,
 		Args: cobra.MaximumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) > 0 {

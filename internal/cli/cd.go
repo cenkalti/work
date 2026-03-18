@@ -45,15 +45,15 @@ func worktreeCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 	loc := detectLocation(cmd)
-	if !loc.IsRoot() {
-		return listTaskIDsFiltered(loc.TasksDir(), nil), cobra.ShellCompDirectiveNoFileComp
-	}
-	root := loc.WorktreeRoot()
-	worktrees, err := git.ListWorktrees(root)
+	worktrees, err := git.ListWorktrees(loc.RootRepo)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
-	prefix := root
+	wtRoot, err := filepath.EvalSymlinks(loc.WorktreeRoot())
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	prefix := wtRoot
 	if !strings.HasSuffix(prefix, string(filepath.Separator)) {
 		prefix += string(filepath.Separator)
 	}
