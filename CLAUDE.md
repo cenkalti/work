@@ -21,7 +21,7 @@ This installs the binary, adds shell integration to `~/.zshrc`, copies slash com
 
 ```bash
 work run [name]              # no arg → start session here; name → create worktree and start session
-work name                    # print current worktree name (. at root)
+work id                      # print the current task's dot-separated ID (see below)
 work ls                      # list all worktrees
 work mv <src> <dst>          # move/rename task (use . for root)
 work rm <name>               # remove worktree and branch
@@ -50,6 +50,41 @@ All identifiers are plain strings. No UUIDs or auto-generated IDs.
 | Worktree path | `.work/tree/<branch>/` | `.work/tree/user-auth.build-login-form/` |
 | Workspace path | `.work/space/<branch>/` | `.work/space/user-auth.build-login-form/` |
 | Work log | `.work/space/<branch>/log.md` | `.work/space/user-auth.build-login-form/log.md` |
+
+### `work id` — Task Identity
+
+`work id` prints the fully-qualified ID of the current task. The ID is a **dot-separated path** that encodes the task's position in the hierarchy. At the root repo (no active task), it prints `.`.
+
+The dot-separated structure works like a filesystem path but uses `.` as the delimiter:
+
+```
+user-auth                       # root task
+user-auth.build-login-form      # subtask of user-auth
+user-auth.build-login-form.api  # subtask of build-login-form
+```
+
+Each segment is a kebab-case task ID. Reading left to right gives the full ancestry: `a.b.c` means task `c`, which is a child of `b`, which is a child of root task `a`.
+
+This ID is also the git branch name. The dot-separated structure means you can always derive:
+- **Parent branch**: everything before the last dot (`user-auth.build-login-form` → `user-auth`)
+- **Task ID**: the last segment after the final dot (`user-auth.build-login-form` → `build-login-form`)
+- **Workspace path**: `.work/space/<full-id>/`
+- **Worktree path**: `.work/tree/<full-id>/`
+
+Examples:
+
+```bash
+$ work id
+.                                    # at repo root, no active task
+
+$ cd .work/tree/user-auth/
+$ work id
+user-auth                            # root task
+
+$ cd .work/tree/user-auth.build-login-form/
+$ work id
+user-auth.build-login-form           # nested subtask
+```
 
 Key points:
 - Everything is a task. Root tasks have no parent; any task can be decomposed into subtasks.

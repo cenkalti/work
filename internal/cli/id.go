@@ -6,10 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func nameCmd() *cobra.Command {
+func idCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "name",
-		Short: "Print the current worktree name",
+		Use:   "id",
+		Short: "Print the current task ID",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			loc := detectLocation(cmd)
 			if loc.IsRoot() {
