@@ -86,7 +86,7 @@ Work is a multi-task orchestrator for Claude Code. It decomposes plans into task
 
 ### Key packages
 
-- **`internal/cli/`** — Cobra commands. `root.go` wires commands into Worktree and Task groups. `context.go` handles location detection and completion helpers.
+- **`internal/cli/`** — Cobra commands. `root.go` wires commands into Worktree and Task groups. `helpers.go` has location detection and completion helpers. `context.go` is the hidden `work context` command (SessionStart hook).
 - **`internal/location/`** — Detects current working context from CWD and git branch. `Branch` is the full dot-separated path; empty at the root repo.
 - **`internal/paths/`** — Path construction helpers. `ParentBranch`/`BranchID` split dot-notation branches.
 - **`internal/task/`** — Task data model (ID, summary, depends_on, status, files, description, acceptance, context). Tasks are JSON files in parent workspaces.

@@ -17,9 +17,10 @@ func removeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "rm <name>",
 		Short: "Remove a worktree and its branch",
-		Long: `work rm <task>          # remove root task worktree and branch
-work rm <subtask>       # remove child task worktree and branch (from task worktree)
-work rm <task.subtask>  # remove child task worktree and branch`,
+		Long: `work rm myfeature            # remove root task worktree and branch
+work rm myfeature.subtask    # remove child task worktree and branch
+
+Names are absolute (dot-separated branch paths).`,
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {

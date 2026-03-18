@@ -21,7 +21,7 @@ work mv foo.a foo.b        # rename subtask
 work mv foo.a bar.a        # move subtask to different parent
 work mv foo .              # move task back to root workspace
 
-Must be run from the repo root. Task names are absolute (dot-separated).
+Must be run from the repo root. Names are absolute (dot-separated branch paths).
 Use "." to refer to the root repo (no task).`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {

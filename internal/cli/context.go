@@ -121,7 +121,6 @@ func printChildTaskContext(parentContext string, t *task.Task) {
 func printAvailableCommands() {
 	fmt.Printf("## Available Commands\n\n")
 	fmt.Println("```bash")
-	fmt.Println("work ls                 # List subtasks with their status")
 	fmt.Println("work tasks                       # List subtasks")
 	fmt.Println("work tasks --ready               # Subtasks ready to work on")
 	fmt.Println("work show <id>                   # Show details of a subtask")
