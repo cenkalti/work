@@ -8,9 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/cenkalti/work/internal/git"
 	"github.com/cenkalti/work/internal/location"
-	"github.com/cenkalti/work/internal/paths"
 	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
@@ -39,43 +37,6 @@ func detectLocation(cmd *cobra.Command) *location.Location {
 	return wc
 }
 
-// listRootTaskNames returns worktree names that are root tasks (no dots).
-func listRootTaskNames(rootRepo string) []string {
-	wtRoot := paths.WorktreeRoot(rootRepo)
-	worktrees, err := git.ListWorktrees(wtRoot)
-	if err != nil {
-		return nil
-	}
-	prefix := wtRoot
-	if !strings.HasSuffix(prefix, string(filepath.Separator)) {
-		prefix += string(filepath.Separator)
-	}
-	var names []string
-	for _, path := range worktrees {
-		name, ok := strings.CutPrefix(path, prefix)
-		if ok && !strings.Contains(name, ".") {
-			names = append(names, name)
-		}
-	}
-	return names
-}
-
-// listTaskIDsFiltered returns task IDs matching an optional filter.
-func listTaskIDsFiltered(tasksDir string, filter func(*task.Task) bool) []string {
-	tasks, err := task.LoadAll(tasksDir)
-	if err != nil {
-		return nil
-	}
-	var ids []string
-	for id, t := range tasks {
-		if filter == nil || filter(t) {
-			ids = append(ids, id)
-		}
-	}
-	slices.Sort(ids)
-	return ids
-}
-
 // taskIDCompletionFunc completes task IDs from ./workspace/tasks/ in the current directory.
 func taskIDCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
@@ -86,5 +47,16 @@ func taskIDCompletionFunc(cmd *cobra.Command, args []string, toComplete string) 
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 	tasksDir := filepath.Join(cwd, "workspace", "tasks")
-	return listTaskIDsFiltered(tasksDir, nil), cobra.ShellCompDirectiveNoFileComp
+	tasks, err := task.LoadAll(tasksDir)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	var ids []string
+	for id := range tasks {
+		if strings.HasPrefix(id, toComplete) {
+			ids = append(ids, id)
+		}
+	}
+	slices.Sort(ids)
+	return ids, cobra.ShellCompDirectiveNoFileComp
 }
