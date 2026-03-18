@@ -11,9 +11,11 @@ func runCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "run [name]",
 		Short: "Start a Claude Code session",
-		Long: `work run                # start session in current worktree
-work run <task>         # create root task worktree and start session
-work run <task.subtask> # create child task worktree and start session`,
+		Long: `work run                    # start session in current worktree
+work run myfeature          # create root task worktree and start session
+work run myfeature.subtask  # create child task worktree and start session
+
+Names are absolute (dot-separated branch paths).`,
 		Args:              cobra.MaximumNArgs(1),
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {

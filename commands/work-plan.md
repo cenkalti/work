@@ -64,14 +64,14 @@ work tree
 
 Ask the human how they want to execute the tasks:
 
-**Option A — Inline (current agent):** You work through each task sequentially in this conversation, in dependency order. Use `work ready` to find the next task, do the work, then mark it complete with `work complete <id>`. Best for small goals (≤5 tasks, no parallelism needed).
+**Option A — Inline (current agent):** You work through each task sequentially in this conversation, in dependency order. Use `work tasks --ready` to find the next task, do the work, then mark it complete with `work set-status <id> completed`. Best for small goals (≤5 tasks, no parallelism needed).
 
 **Option B — Worktrees (separate agents):** Each task runs as an isolated Claude Code session in its own git worktree. Best for large goals, parallel work, or tasks that benefit from isolation.
 
 ```bash
-work ready        # show tasks with no pending dependencies
-work run <id>     # launch a separate agent for a task (Option B)
-work complete <id> # mark a task done (Option A)
+work tasks --ready      # show tasks with no pending dependencies
+work run <id>           # launch a separate agent for a task (Option B)
+work set-status <id> completed # mark a task done (Option A)
 ```
 
 If the human chooses **Option A**, invoke `/work-execute` and work through ready tasks one by one, marking each complete before moving to the next.

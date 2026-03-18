@@ -48,36 +48,7 @@ work tasks --completed  # completed tasks`,
 				return err
 			}
 			tasksDir := filepath.Join(cwd, "workspace", "tasks")
-			tasks, err := task.LoadAll(tasksDir)
-			if err != nil {
-				return fmt.Errorf("loading tasks: %w", err)
-			}
-			if len(tasks) == 0 {
-				return fmt.Errorf("no tasks found; create tasks using the work MCP tool")
-			}
-
-			noFilter := !flagReady && !flagActive && !flagBlocked && !flagPending && !flagCompleted
-
-			var filtered []*task.Task
-			for _, t := range tasks {
-				if t.Status == "" {
-					t.Status = task.StatusPending
-				}
-				if noFilter || matchesFilter(t, tasks, flagReady, flagActive, flagBlocked, flagPending, flagCompleted) {
-					filtered = append(filtered, t)
-				}
-			}
-
-			slices.SortFunc(filtered, func(a, b *task.Task) int {
-				if c := statusOrder(a.Status) - statusOrder(b.Status); c != 0 {
-					return c
-				}
-				return strings.Compare(a.ID, b.ID)
-			})
-			for _, t := range filtered {
-				fmt.Printf("%-30s %s\n", t.ID, t.Status)
-			}
-			return nil
+			return listTasks(tasksDir, flagReady, flagActive, flagBlocked, flagPending, flagCompleted)
 		},
 	}
 
@@ -110,6 +81,39 @@ func matchesFilter(t *task.Task, all map[string]*task.Task, ready, active, block
 		}
 	}
 	return false
+}
+
+func listTasks(tasksDir string, ready, active, blocked, pending, completed bool) error {
+	tasks, err := task.LoadAll(tasksDir)
+	if err != nil {
+		return fmt.Errorf("loading tasks: %w", err)
+	}
+	if len(tasks) == 0 {
+		return fmt.Errorf("no tasks found; create tasks using the work MCP tool")
+	}
+
+	noFilter := !ready && !active && !blocked && !pending && !completed
+
+	var filtered []*task.Task
+	for _, t := range tasks {
+		if t.Status == "" {
+			t.Status = task.StatusPending
+		}
+		if noFilter || matchesFilter(t, tasks, ready, active, blocked, pending, completed) {
+			filtered = append(filtered, t)
+		}
+	}
+
+	slices.SortFunc(filtered, func(a, b *task.Task) int {
+		if c := statusOrder(a.Status) - statusOrder(b.Status); c != 0 {
+			return c
+		}
+		return strings.Compare(a.ID, b.ID)
+	})
+	for _, t := range filtered {
+		fmt.Printf("%-30s %s\n", t.ID, t.Status)
+	}
+	return nil
 }
 
 func allDepsMet(t *task.Task, all map[string]*task.Task) bool {
