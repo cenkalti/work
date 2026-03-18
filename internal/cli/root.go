@@ -41,8 +41,6 @@ func Root() *cobra.Command {
 		listCmd(),
 		showCmd(),
 		treeCmd(),
-		readyCmd(),
-		activeCmd(),
 		completeCmd(),
 	} {
 		c.GroupID = "task"

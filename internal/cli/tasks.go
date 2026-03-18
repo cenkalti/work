@@ -25,44 +25,98 @@ func statusOrder(s string) int {
 }
 
 func listCmd() *cobra.Command {
-	return &cobra.Command{
+	var (
+		flagReady     bool
+		flagActive    bool
+		flagBlocked   bool
+		flagPending   bool
+		flagCompleted bool
+	)
+
+	cmd := &cobra.Command{
 		Use:   "tasks",
 		Short: "List subtasks",
+		Long: `work tasks              # list all subtasks
+work tasks --ready      # pending tasks with all dependencies met
+work tasks --active     # tasks currently being worked on
+work tasks --blocked    # pending tasks with unmet dependencies
+work tasks --pending    # all pending tasks
+work tasks --completed  # completed tasks`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
 				return err
 			}
 			tasksDir := filepath.Join(cwd, "workspace", "tasks")
-			return listTasks(tasksDir)
+			tasks, err := task.LoadAll(tasksDir)
+			if err != nil {
+				return fmt.Errorf("loading tasks: %w", err)
+			}
+			if len(tasks) == 0 {
+				return fmt.Errorf("no tasks found; create tasks using the work MCP tool")
+			}
+
+			noFilter := !flagReady && !flagActive && !flagBlocked && !flagPending && !flagCompleted
+
+			var filtered []*task.Task
+			for _, t := range tasks {
+				if t.Status == "" {
+					t.Status = task.StatusPending
+				}
+				if noFilter || matchesFilter(t, tasks, flagReady, flagActive, flagBlocked, flagPending, flagCompleted) {
+					filtered = append(filtered, t)
+				}
+			}
+
+			slices.SortFunc(filtered, func(a, b *task.Task) int {
+				if c := statusOrder(a.Status) - statusOrder(b.Status); c != 0 {
+					return c
+				}
+				return strings.Compare(a.ID, b.ID)
+			})
+			for _, t := range filtered {
+				fmt.Printf("%-30s %s\n", t.ID, t.Status)
+			}
+			return nil
 		},
 	}
+
+	cmd.Flags().BoolVar(&flagReady, "ready", false, "pending tasks with all dependencies met")
+	cmd.Flags().BoolVar(&flagActive, "active", false, "tasks currently being worked on")
+	cmd.Flags().BoolVar(&flagBlocked, "blocked", false, "pending tasks with unmet dependencies")
+	cmd.Flags().BoolVar(&flagPending, "pending", false, "all pending tasks")
+	cmd.Flags().BoolVar(&flagCompleted, "completed", false, "completed tasks")
+
+	return cmd
 }
 
-func listTasks(tasksDir string) error {
-	tasks, err := task.LoadAll(tasksDir)
-	if err != nil {
-		return fmt.Errorf("loading tasks: %w", err)
+func matchesFilter(t *task.Task, all map[string]*task.Task, ready, active, blocked, pending, completed bool) bool {
+	if active && t.Status == task.StatusActive {
+		return true
 	}
-	if len(tasks) == 0 {
-		return fmt.Errorf("no tasks found; create tasks using the work MCP tool")
+	if completed && t.Status == task.StatusCompleted {
+		return true
 	}
+	if pending && t.Status == task.StatusPending {
+		return true
+	}
+	if t.Status == task.StatusPending {
+		depsOK := allDepsMet(t, all)
+		if ready && depsOK {
+			return true
+		}
+		if blocked && !depsOK {
+			return true
+		}
+	}
+	return false
+}
 
-	sorted := make([]*task.Task, 0, len(tasks))
-	for _, t := range tasks {
-		if t.Status == "" {
-			t.Status = task.StatusPending
+func allDepsMet(t *task.Task, all map[string]*task.Task) bool {
+	for _, dep := range t.DependsOn {
+		if d, ok := all[dep]; !ok || d.Status != task.StatusCompleted {
+			return false
 		}
-		sorted = append(sorted, t)
 	}
-	slices.SortFunc(sorted, func(a, b *task.Task) int {
-		if c := statusOrder(a.Status) - statusOrder(b.Status); c != 0 {
-			return c
-		}
-		return strings.Compare(a.ID, b.ID)
-	})
-	for _, t := range sorted {
-		fmt.Printf("%-30s %s\n", t.ID, t.Status)
-	}
-	return nil
+	return true
 }
