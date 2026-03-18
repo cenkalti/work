@@ -24,6 +24,7 @@ func Root() *cobra.Command {
 		cdCmd(),
 		mcpCmd(),
 		contextCmd(),
+		bashCheckCmd(),
 	} {
 		c.GroupID = "worktree"
 		cmd.AddCommand(c)
