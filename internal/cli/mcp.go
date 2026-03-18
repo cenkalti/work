@@ -11,8 +11,9 @@ import (
 
 func mcpCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "mcp",
-		Short: "Start MCP server for task creation",
+		Use:    "mcp",
+		Short:  "Start MCP server for task creation",
+		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			loc := detectLocation(cmd)
 			branch, err := loc.ResolveBranch("")
