@@ -1,62 +1,142 @@
 package cli
 
 import (
-	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
-	"github.com/cenkalti/work/internal/location"
+	"github.com/cenkalti/work/internal/paths"
 	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
 
-type workContextKey struct{}
+func contextCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:    "context",
+		Short:  "Print task context for the current worktree",
+		Hidden: true,
+		Long: `Prints task context to stdout for injection into Claude Code's conversation.
 
-func persistWorkContext(cmd *cobra.Command, args []string) error {
-	wc, err := location.Detect()
-	if err != nil {
-		return err
+Install in ~/.claude/settings.json to automatically inject context at session start:
+
+  {
+    "hooks": {
+      "SessionStart": [
+        {
+          "matcher": "",
+          "hooks": [{"type": "command", "command": "work context"}]
+        }
+      ]
+    }
+  }
+
+Exits silently if not inside a work-managed worktree.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			loc := detectLocation(cmd)
+			if loc.IsRoot() || !isWorkManaged(loc.RootRepo) {
+				return nil
+			}
+			return printTaskContext(loc.RootRepo, loc.Branch)
+		},
 	}
-	cmd.SetContext(context.WithValue(cmd.Context(), workContextKey{}, wc))
+}
+
+// isWorkManaged reports whether the root repo has a .work/ directory.
+func isWorkManaged(rootRepo string) bool {
+	_, err := os.Stat(filepath.Join(rootRepo, ".work"))
+	return err == nil
+}
+
+func printTaskContext(rootRepo, branch string) error {
+	parentBranch := paths.ParentBranch(branch)
+	taskID := paths.BranchID(branch)
+
+	if parentBranch == "" {
+		printRootTaskContext(branch)
+		return nil
+	}
+
+	data, err := os.ReadFile(filepath.Join(paths.TasksDir(rootRepo, parentBranch), taskID+".json"))
+	if err != nil {
+		return fmt.Errorf("reading task file: %w", err)
+	}
+	var t task.Task
+	if err := json.Unmarshal(data, &t); err != nil {
+		return fmt.Errorf("parsing task: %w", err)
+	}
+
+	parentContext := readFileContents(filepath.Join(paths.Workspace(rootRepo, parentBranch), "plan.md"))
+	printChildTaskContext(parentContext, &t)
 	return nil
 }
 
-func detectLocation(cmd *cobra.Command) *location.Location {
-	if wc, ok := cmd.Context().Value(workContextKey{}).(*location.Location); ok {
-		return wc
-	}
-	wc, err := location.Detect()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-	cmd.SetContext(context.WithValue(cmd.Context(), workContextKey{}, wc))
-	return wc
+func printRootTaskContext(branch string) {
+	fmt.Printf("# Task: %s\n\n", branch)
+	fmt.Printf("You are working on task **%s**. Work is a multi-task orchestrator that decomposes plans into subtasks with dependencies, then runs each subtask as a separate Claude Code instance in its own git worktree.\n\n", branch)
+	fmt.Printf("Use the `/work-plan` slash command to start the planning workflow.\n\n")
+	fmt.Printf("## Workspace\n\n")
+	fmt.Printf("Your workspace is at `workspace/`. Use it for all planning documents.\n\n")
+	printAvailableCommands()
+	fmt.Printf("## Key Files\n\n")
+	fmt.Println("- `workspace/plan.md` — The implementation plan (created during `/work-plan`)")
+	fmt.Println("- `workspace/tasks/` — Subtask JSON files (created via the work MCP tool)")
 }
 
-// taskIDCompletionFunc completes task IDs from ./workspace/tasks/ in the current directory.
-func taskIDCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	if len(args) > 0 {
-		return nil, cobra.ShellCompDirectiveNoFileComp
+func printChildTaskContext(parentContext string, t *task.Task) {
+	if parentContext != "" {
+		fmt.Printf("# Parent Task\n\n")
+		fmt.Println(strings.TrimSpace(parentContext))
+		fmt.Println()
 	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveNoFileComp
+
+	fmt.Printf("# Your Task\n\n")
+	fmt.Printf("**ID:** %s\n\n", t.ID)
+	fmt.Printf("**Summary:** %s\n", t.Summary)
+
+	if t.Description != "" {
+		fmt.Printf("\n**Description:** %s\n", t.Description)
 	}
-	tasksDir := filepath.Join(cwd, "workspace", "tasks")
-	tasks, err := task.LoadAll(tasksDir)
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveNoFileComp
+	if len(t.Files) > 0 {
+		fmt.Printf("\n**Files:** %s\n", strings.Join(t.Files, ", "))
 	}
-	var ids []string
-	for id := range tasks {
-		if strings.HasPrefix(id, toComplete) {
-			ids = append(ids, id)
+	if len(t.Acceptance) > 0 {
+		fmt.Printf("\n**Acceptance Criteria:**\n")
+		for _, a := range t.Acceptance {
+			fmt.Printf("- %s\n", a)
 		}
 	}
-	slices.Sort(ids)
-	return ids, cobra.ShellCompDirectiveNoFileComp
+	if t.Context != "" {
+		fmt.Printf("\n**Context:** %s\n", t.Context)
+	}
+
+	fmt.Printf("\n## Workspace\n\n")
+	fmt.Println("Your workspace is at `workspace/`.")
+	fmt.Printf("Use it for scratch files, intermediate outputs, and notes.\n\n")
+	fmt.Printf("**Work Log:** `workspace/log.md`\n\n")
+	printAvailableCommands()
+}
+
+func printAvailableCommands() {
+	fmt.Printf("## Available Commands\n\n")
+	fmt.Println("```bash")
+	fmt.Println("work ls                 # List subtasks with their status")
+	fmt.Println("work show <id>          # Show details of a subtask")
+	fmt.Println("work tree               # Show subtask dependency tree")
+	fmt.Println("work tree <id>          # Show subtree rooted at a subtask")
+	fmt.Println("work ready              # Show subtasks ready to work on")
+	fmt.Println("work active             # Show subtasks currently being worked on")
+	fmt.Println("work complete <id>      # Mark a subtask as complete")
+	fmt.Println("work run <id>           # Start a Claude Code session for a subtask")
+	fmt.Println("work rm <id>            # Remove a subtask")
+	fmt.Printf("```\n\n")
+}
+
+func readFileContents(path string) string {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(content))
 }
