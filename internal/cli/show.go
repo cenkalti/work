@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/cenkalti/work/internal/paths"
 	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -22,7 +23,7 @@ func showCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			tasksDir := filepath.Join(cwd, "workspace", "tasks")
+			tasksDir := paths.LocalTasksDir(cwd)
 			return runShow(tasksDir, args[0])
 		},
 	}

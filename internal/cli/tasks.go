@@ -3,10 +3,10 @@ package cli
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 
+	"github.com/cenkalti/work/internal/paths"
 	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
@@ -47,7 +47,7 @@ work tasks --completed  # completed tasks`,
 			if err != nil {
 				return err
 			}
-			tasksDir := filepath.Join(cwd, "workspace", "tasks")
+			tasksDir := paths.LocalTasksDir(cwd)
 			return listTasks(tasksDir, flagReady, flagActive, flagBlocked, flagPending, flagCompleted)
 		},
 	}

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/cenkalti/work/internal/paths"
 	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
@@ -30,7 +31,7 @@ work set-status <id> completed   # mark task as completed`,
 			if err != nil {
 				return err
 			}
-			tasksDir := filepath.Join(cwd, "workspace", "tasks")
+			tasksDir := paths.LocalTasksDir(cwd)
 			return runSet(tasksDir, id, status)
 		},
 	}

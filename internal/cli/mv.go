@@ -99,7 +99,7 @@ Use "." to refer to the root repo (no task).`,
 func validateMove(root, src, dst string) error {
 	if src == "" {
 		// Moving from root: workspace must exist.
-		wsPath := filepath.Join(root, "workspace")
+		wsPath := paths.WorkspaceLink(root)
 		if _, err := os.Lstat(wsPath); err != nil {
 			return fmt.Errorf("no workspace found at root")
 		}
@@ -123,7 +123,7 @@ func validateMove(root, src, dst string) error {
 			return fmt.Errorf("workspace not found for %s", src)
 		}
 		// Root workspace must not exist.
-		wsPath := filepath.Join(root, "workspace")
+		wsPath := paths.WorkspaceLink(root)
 		if _, err := os.Lstat(wsPath); err == nil {
 			return fmt.Errorf("workspace already exists at root; remove it first")
 		}
@@ -207,7 +207,7 @@ func moveTask(root, oldBranch, newBranch string) error {
 		}
 		// Update workspace symlink in the worktree.
 		newSpace := paths.Workspace(root, newBranch)
-		wsLink := filepath.Join(newWT, "workspace")
+		wsLink := paths.WorkspaceLink(newWT)
 		_ = os.Remove(wsLink)
 		if err := os.Symlink(newSpace, wsLink); err != nil {
 			return fmt.Errorf("updating workspace symlink: %w", err)
@@ -260,7 +260,7 @@ func moveTaskJSON(root, oldBranch, newBranch string) error {
 
 // moveFromRoot moves the root workspace (./workspace) into a named task.
 func moveFromRoot(root, dst string) error {
-	wsPath := filepath.Join(root, "workspace")
+	wsPath := paths.WorkspaceLink(root)
 	info, err := os.Lstat(wsPath)
 	if err != nil {
 		return fmt.Errorf("no workspace found at root: %w", err)
@@ -302,7 +302,7 @@ func moveFromRoot(root, dst string) error {
 	}
 
 	// Create workspace symlink in the new worktree.
-	wsLink := filepath.Join(wtPath, "workspace")
+	wsLink := paths.WorkspaceLink(wtPath)
 	_ = os.Remove(wsLink)
 	if err := os.Symlink(dstSpace, wsLink); err != nil {
 		return fmt.Errorf("creating workspace symlink: %w", err)
@@ -315,7 +315,7 @@ func moveFromRoot(root, dst string) error {
 // moveToRoot moves a named task's workspace to the root workspace (./workspace).
 func moveToRoot(root, src string) error {
 	srcSpace := paths.Workspace(root, src)
-	wsPath := filepath.Join(root, "workspace")
+	wsPath := paths.WorkspaceLink(root)
 
 	// Move workspace to root.
 	if err := os.Rename(srcSpace, wsPath); err != nil {

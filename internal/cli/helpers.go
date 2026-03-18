@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/cenkalti/work/internal/location"
+	"github.com/cenkalti/work/internal/paths"
 	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
@@ -46,7 +46,7 @@ func taskIDCompletionFunc(cmd *cobra.Command, args []string, toComplete string) 
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	tasksDir := filepath.Join(cwd, "workspace", "tasks")
+	tasksDir := paths.LocalTasksDir(cwd)
 	tasks, err := task.LoadAll(tasksDir)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp

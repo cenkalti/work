@@ -45,7 +45,7 @@ func Run(ctx *location.Location, branch string) error {
 		return fmt.Errorf("creating workspace: %w", err)
 	}
 
-	wsLink := filepath.Join(wtPath, "workspace")
+	wsLink := paths.WorkspaceLink(wtPath)
 	if _, err := os.Lstat(wsLink); os.IsNotExist(err) {
 		if err := os.Symlink(spacePath, wsLink); err != nil {
 			return fmt.Errorf("creating workspace symlink: %w", err)
