@@ -1,4 +1,4 @@
-package cli
+package task
 
 import (
 	"bytes"
@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cenkalti/work/internal/task"
+	taskpkg "github.com/cenkalti/work/internal/task"
 )
 
 // writeTasks writes a slice of tasks to a temp dir and returns the dir path.
-func writeTasks(t *testing.T, tasks []*task.Task) string {
+func writeTasks(t *testing.T, tasks []*taskpkg.Task) string {
 	t.Helper()
 	dir := t.TempDir()
 	for _, tk := range tasks {
@@ -40,12 +40,12 @@ func captureStdout(t *testing.T, f func()) string {
 	return buf.String()
 }
 
-var testTasks = []*task.Task{
-	{ID: "task-a", Summary: "A", Status: task.StatusPending},
-	{ID: "task-b", Summary: "B", Status: task.StatusActive},
-	{ID: "task-c", Summary: "C", Status: task.StatusCompleted},
-	{ID: "task-d", Summary: "D", Status: task.StatusPending, DependsOn: []string{"task-a"}},
-	{ID: "task-e", Summary: "E", Status: task.StatusPending, DependsOn: []string{"task-c"}},
+var testTasks = []*taskpkg.Task{
+	{ID: "task-a", Summary: "A", Status: taskpkg.StatusPending},
+	{ID: "task-b", Summary: "B", Status: taskpkg.StatusActive},
+	{ID: "task-c", Summary: "C", Status: taskpkg.StatusCompleted},
+	{ID: "task-d", Summary: "D", Status: taskpkg.StatusPending, DependsOn: []string{"task-a"}},
+	{ID: "task-e", Summary: "E", Status: taskpkg.StatusPending, DependsOn: []string{"task-c"}},
 }
 
 func TestListTasks(t *testing.T) {
@@ -73,8 +73,8 @@ func TestListTasks(t *testing.T) {
 func TestListTasks_Empty(t *testing.T) {
 	dir := t.TempDir()
 	err := listTasks(dir, false, false, false, false, false)
-	if err == nil {
-		t.Error("expected error for empty task dir")
+	if err != nil {
+		t.Errorf("unexpected error for empty task dir: %v", err)
 	}
 }
 
@@ -85,9 +85,9 @@ func TestListTasks_MissingDir(t *testing.T) {
 	}
 }
 
-func loadTestTasks(t *testing.T) map[string]*task.Task {
+func loadTestTasks(t *testing.T) map[string]*taskpkg.Task {
 	t.Helper()
-	m := make(map[string]*task.Task)
+	m := make(map[string]*taskpkg.Task)
 	for _, tk := range testTasks {
 		m[tk.ID] = tk
 	}
@@ -97,15 +97,15 @@ func loadTestTasks(t *testing.T) map[string]*task.Task {
 func TestAllDepsMet(t *testing.T) {
 	all := loadTestTasks(t)
 
-	// task-a: no deps → met
+	// task-a: no deps -> met
 	if !allDepsMet(all["task-a"], all) {
 		t.Error("task-a should have all deps met (no deps)")
 	}
-	// task-e: depends on task-c (completed) → met
+	// task-e: depends on task-c (completed) -> met
 	if !allDepsMet(all["task-e"], all) {
 		t.Error("task-e should have all deps met (task-c completed)")
 	}
-	// task-d: depends on task-a (pending) → not met
+	// task-d: depends on task-a (pending) -> not met
 	if allDepsMet(all["task-d"], all) {
 		t.Error("task-d should not have all deps met (task-a pending)")
 	}
@@ -151,19 +151,19 @@ func TestMatchesFilter_Active(t *testing.T) {
 }
 
 func TestRunSet(t *testing.T) {
-	dir := writeTasks(t, []*task.Task{
-		{ID: "my-task", Summary: "test", Status: task.StatusPending},
+	dir := writeTasks(t, []*taskpkg.Task{
+		{ID: "my-task", Summary: "test", Status: taskpkg.StatusPending},
 	})
 
-	if err := runSet(dir, "my-task", task.StatusCompleted); err != nil {
+	if err := runSet(dir, "my-task", taskpkg.StatusCompleted); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	tasks, err := task.LoadAll(dir)
+	tasks, err := taskpkg.LoadAll(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tasks["my-task"].Status != task.StatusCompleted {
+	if tasks["my-task"].Status != taskpkg.StatusCompleted {
 		t.Errorf("expected completed, got %s", tasks["my-task"].Status)
 	}
 }

@@ -1,12 +1,13 @@
 package task
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 var validID = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
@@ -28,7 +29,12 @@ type Task struct {
 	Context     string   `json:"context,omitempty" yaml:"context,omitempty"`
 }
 
-// LoadAll reads all task JSON files from dir and returns them keyed by ID.
+// File returns the path to a task's YAML file in the given directory.
+func File(dir, id string) string {
+	return filepath.Join(dir, id+".yaml")
+}
+
+// LoadAll reads all task YAML files from dir and returns them keyed by ID.
 func LoadAll(dir string) (map[string]*Task, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -36,7 +42,7 @@ func LoadAll(dir string) (map[string]*Task, error) {
 	}
 	tasks := make(map[string]*Task)
 	for _, e := range entries {
-		if !strings.HasSuffix(e.Name(), ".json") {
+		if !strings.HasSuffix(e.Name(), ".yaml") {
 			continue
 		}
 		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
@@ -44,7 +50,7 @@ func LoadAll(dir string) (map[string]*Task, error) {
 			return nil, err
 		}
 		var t Task
-		if err := json.Unmarshal(data, &t); err != nil {
+		if err := yaml.Unmarshal(data, &t); err != nil {
 			return nil, fmt.Errorf("parsing %s: %w", e.Name(), err)
 		}
 		tasks[t.ID] = &t
@@ -89,6 +95,19 @@ func DetectCycle(tasks map[string]*Task) error {
 	return nil
 }
 
+// Load reads a single task YAML file by ID from the given directory.
+func Load(dir, id string) (*Task, error) {
+	data, err := os.ReadFile(File(dir, id))
+	if err != nil {
+		return nil, fmt.Errorf("task %q not found", id)
+	}
+	var t Task
+	if err := yaml.Unmarshal(data, &t); err != nil {
+		return nil, fmt.Errorf("parsing task: %w", err)
+	}
+	return &t, nil
+}
+
 func (t *Task) WriteToFile(dir string) error {
 	if !validID.MatchString(t.ID) {
 		return fmt.Errorf("invalid task ID %q: must be kebab-case (lowercase alphanumeric and hyphens)", t.ID)
@@ -96,9 +115,9 @@ func (t *Task) WriteToFile(dir string) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(t, "", "  ")
+	data, err := yaml.Marshal(t)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, t.ID+".json"), data, 0o644)
+	return os.WriteFile(File(dir, t.ID), data, 0o644)
 }

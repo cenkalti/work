@@ -1,4 +1,4 @@
-package cli
+package task
 
 import (
 	"fmt"
@@ -7,17 +7,17 @@ import (
 	"strings"
 
 	"github.com/cenkalti/work/internal/paths"
-	"github.com/cenkalti/work/internal/task"
+	taskpkg "github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
 
 func statusOrder(s string) int {
 	switch s {
-	case task.StatusActive:
+	case taskpkg.StatusActive:
 		return 0
-	case task.StatusPending:
+	case taskpkg.StatusPending:
 		return 1
-	case task.StatusCompleted:
+	case taskpkg.StatusCompleted:
 		return 2
 	default:
 		return 3
@@ -34,14 +34,14 @@ func listCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:   "tasks",
+		Use:   "ls",
 		Short: "List subtasks",
-		Long: `work tasks              # list all subtasks
-work tasks --ready      # pending tasks with all dependencies met
-work tasks --active     # tasks currently being worked on
-work tasks --blocked    # pending tasks with unmet dependencies
-work tasks --pending    # all pending tasks
-work tasks --completed  # completed tasks`,
+		Long: `task ls              # list all subtasks
+task ls --ready      # pending tasks with all dependencies met
+task ls --active     # tasks currently being worked on
+task ls --blocked    # pending tasks with unmet dependencies
+task ls --pending    # all pending tasks
+task ls --completed  # completed tasks`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -61,17 +61,17 @@ work tasks --completed  # completed tasks`,
 	return cmd
 }
 
-func matchesFilter(t *task.Task, all map[string]*task.Task, ready, active, blocked, pending, completed bool) bool {
-	if active && t.Status == task.StatusActive {
+func matchesFilter(t *taskpkg.Task, all map[string]*taskpkg.Task, ready, active, blocked, pending, completed bool) bool {
+	if active && t.Status == taskpkg.StatusActive {
 		return true
 	}
-	if completed && t.Status == task.StatusCompleted {
+	if completed && t.Status == taskpkg.StatusCompleted {
 		return true
 	}
-	if pending && t.Status == task.StatusPending {
+	if pending && t.Status == taskpkg.StatusPending {
 		return true
 	}
-	if t.Status == task.StatusPending {
+	if t.Status == taskpkg.StatusPending {
 		depsOK := allDepsMet(t, all)
 		if ready && depsOK {
 			return true
@@ -84,27 +84,27 @@ func matchesFilter(t *task.Task, all map[string]*task.Task, ready, active, block
 }
 
 func listTasks(tasksDir string, ready, active, blocked, pending, completed bool) error {
-	tasks, err := task.LoadAll(tasksDir)
+	tasks, err := taskpkg.LoadAll(tasksDir)
 	if err != nil {
 		return fmt.Errorf("loading tasks: %w", err)
 	}
 	if len(tasks) == 0 {
-		return fmt.Errorf("no tasks found; create tasks using the work MCP tool")
+		return nil
 	}
 
 	noFilter := !ready && !active && !blocked && !pending && !completed
 
-	var filtered []*task.Task
+	var filtered []*taskpkg.Task
 	for _, t := range tasks {
 		if t.Status == "" {
-			t.Status = task.StatusPending
+			t.Status = taskpkg.StatusPending
 		}
 		if noFilter || matchesFilter(t, tasks, ready, active, blocked, pending, completed) {
 			filtered = append(filtered, t)
 		}
 	}
 
-	slices.SortFunc(filtered, func(a, b *task.Task) int {
+	slices.SortFunc(filtered, func(a, b *taskpkg.Task) int {
 		if c := statusOrder(a.Status) - statusOrder(b.Status); c != 0 {
 			return c
 		}
@@ -116,9 +116,9 @@ func listTasks(tasksDir string, ready, active, blocked, pending, completed bool)
 	return nil
 }
 
-func allDepsMet(t *task.Task, all map[string]*task.Task) bool {
+func allDepsMet(t *taskpkg.Task, all map[string]*taskpkg.Task) bool {
 	for _, dep := range t.DependsOn {
-		if d, ok := all[dep]; !ok || d.Status != task.StatusCompleted {
+		if d, ok := all[dep]; !ok || d.Status != taskpkg.StatusCompleted {
 			return false
 		}
 	}

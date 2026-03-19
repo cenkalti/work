@@ -1,4 +1,4 @@
-package cli
+package work
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ func lsCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// EvalSymlinks to match git's resolved paths (e.g. /tmp → /private/tmp on macOS).
+			// EvalSymlinks to match git's resolved paths (e.g. /tmp -> /private/tmp on macOS).
 			wtRoot, err := filepath.EvalSymlinks(loc.WorktreeRoot())
 			if err != nil {
 				return nil // .work/tree/ doesn't exist yet; no worktrees

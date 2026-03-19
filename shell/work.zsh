@@ -7,6 +7,8 @@ work() {
   fi
 }
 
-# Register completions through the shell function.
+# Register completions.
 eval "$(command work completion zsh)"
 compdef _work work
+eval "$(command task completion zsh)"
+compdef _task task

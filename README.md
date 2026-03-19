@@ -4,9 +4,9 @@ Multi-task orchestrator for Claude Code. Decomposes plans into tasks with depend
 
 ## Installation
 
-1. Build and install the binary:
+1. Build and install the binaries:
 ```bash
-go build -o ~/go/bin/work ./cmd/work/
+go install ./cmd/...
 ```
 
 2. Add shell integration to `~/.zshrc`:
@@ -39,7 +39,7 @@ ln -sf /Users/cenk/projects/work/commands/*.md ~/.claude/commands/
 }
 ```
 
-5. Add the `work` MCP server globally:
+5. Add the `task` MCP server globally:
 ```bash
-claude mcp add --transport stdio --scope user work -- work mcp
+claude mcp add --transport stdio --scope user task -- task mcp
 ```

@@ -1,25 +1,23 @@
-package cli
+package task
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/cenkalti/work/internal/paths"
-	"github.com/cenkalti/work/internal/task"
+	taskpkg "github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
 
-var validStatuses = []string{task.StatusPending, task.StatusActive, task.StatusCompleted}
+var validStatuses = []string{taskpkg.StatusPending, taskpkg.StatusActive, taskpkg.StatusCompleted}
 
 func setStatusCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "set-status <id> <status>",
 		Short: "Set task status",
-		Long: `work set-status <id> pending     # mark task as pending
-work set-status <id> active      # mark task as active
-work set-status <id> completed   # mark task as completed`,
+		Long: `task set-status <id> pending     # mark task as pending
+task set-status <id> active      # mark task as active
+task set-status <id> completed   # mark task as completed`,
 		Args:              cobra.ExactArgs(2),
 		ValidArgsFunction: setCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -47,15 +45,9 @@ func isValidStatus(s string) bool {
 }
 
 func runSet(tasksDir, id, status string) error {
-	taskFile := filepath.Join(tasksDir, id+".json")
-	data, err := os.ReadFile(taskFile)
+	t, err := taskpkg.Load(tasksDir, id)
 	if err != nil {
-		return fmt.Errorf("task %q not found", id)
-	}
-
-	var t task.Task
-	if err := json.Unmarshal(data, &t); err != nil {
-		return fmt.Errorf("parsing task: %w", err)
+		return err
 	}
 
 	t.Status = status

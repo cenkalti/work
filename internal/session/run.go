@@ -1,11 +1,9 @@
 package session
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"syscall"
 
 	"github.com/cenkalti/work/internal/git"
@@ -57,14 +55,9 @@ func Run(ctx *location.Location, branch string) error {
 }
 
 func setTaskActive(tasksDir, taskID string) error {
-	taskFile := filepath.Join(tasksDir, taskID+".json")
-	data, err := os.ReadFile(taskFile)
+	t, err := task.Load(tasksDir, taskID)
 	if err != nil {
-		return fmt.Errorf("reading task file: %w", err)
-	}
-	var t task.Task
-	if err := json.Unmarshal(data, &t); err != nil {
-		return fmt.Errorf("parsing task file: %w", err)
+		return err
 	}
 	if t.Status == task.StatusCompleted {
 		return nil

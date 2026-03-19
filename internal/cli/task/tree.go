@@ -1,4 +1,4 @@
-package cli
+package task
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	"github.com/cenkalti/work/internal/paths"
-	"github.com/cenkalti/work/internal/task"
+	taskpkg "github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +32,7 @@ func treeCmd() *cobra.Command {
 }
 
 func runTree(tasksDir, filterID string) error {
-	tasks, err := task.LoadAll(tasksDir)
+	tasks, err := taskpkg.LoadAll(tasksDir)
 	if err != nil {
 		return fmt.Errorf("reading tasks: %w", err)
 	}
@@ -67,7 +67,7 @@ func runTree(tasksDir, filterID string) error {
 	return nil
 }
 
-func printTree(id string, tasks map[string]*task.Task, prefix string, last bool, isRoot bool, visited map[string]bool) {
+func printTree(id string, tasks map[string]*taskpkg.Task, prefix string, last bool, isRoot bool, visited map[string]bool) {
 	if visited == nil {
 		visited = make(map[string]bool)
 	}
@@ -87,7 +87,7 @@ func printTree(id string, tasks map[string]*task.Task, prefix string, last bool,
 	}
 
 	label := id
-	if t, ok := tasks[id]; ok && t.Status == task.StatusCompleted {
+	if t, ok := tasks[id]; ok && t.Status == taskpkg.StatusCompleted {
 		label += " (completed)"
 	}
 	fmt.Printf("%s%s%s\n", prefix, connector, label)

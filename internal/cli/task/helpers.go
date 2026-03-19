@@ -1,41 +1,14 @@
-package cli
+package task
 
 import (
-	"context"
-	"fmt"
 	"os"
 	"slices"
 	"strings"
 
-	"github.com/cenkalti/work/internal/location"
 	"github.com/cenkalti/work/internal/paths"
-	"github.com/cenkalti/work/internal/task"
+	taskpkg "github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
-
-type workContextKey struct{}
-
-func persistWorkContext(cmd *cobra.Command, args []string) error {
-	wc, err := location.Detect()
-	if err != nil {
-		return err
-	}
-	cmd.SetContext(context.WithValue(cmd.Context(), workContextKey{}, wc))
-	return nil
-}
-
-func detectLocation(cmd *cobra.Command) *location.Location {
-	if wc, ok := cmd.Context().Value(workContextKey{}).(*location.Location); ok {
-		return wc
-	}
-	wc, err := location.Detect()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-	cmd.SetContext(context.WithValue(cmd.Context(), workContextKey{}, wc))
-	return wc
-}
 
 // taskIDCompletionFunc completes task IDs from ./workspace/tasks/ in the current directory.
 func taskIDCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -47,7 +20,7 @@ func taskIDCompletionFunc(cmd *cobra.Command, args []string, toComplete string) 
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 	tasksDir := paths.LocalTasksDir(cwd)
-	tasks, err := task.LoadAll(tasksDir)
+	tasks, err := taskpkg.LoadAll(tasksDir)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}

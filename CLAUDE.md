@@ -3,7 +3,7 @@
 ## Building
 
 ```bash
-go build -o ~/go/bin/work ./cmd/work/
+go install ./cmd/...
 ```
 
 ## Installation
@@ -23,13 +23,14 @@ work rm <name>               # remove worktree and branch
 work cd [name]               # change directory to worktree (requires shell integration)
 ```
 
-### Task Commands (relative task IDs in ./workspace/tasks/)
+### Task Commands (separate `task` binary, operates on ./workspace/tasks/)
 
 ```bash
-work tasks                   # list subtasks (--ready, --active, --blocked, --pending, --completed)
-work show <id>               # show task details as YAML
-work tree [id]               # dependency tree
-work set-status <id> <status> # set task status (pending, active, completed)
+task ls                    # list subtasks (--ready, --active, --blocked, --pending, --completed)
+task show <id>               # show task details as YAML
+task tree [id]               # dependency tree
+task set-status <id> <status> # set task status (pending, active, completed)
+task mcp                     # start MCP server for task creation (hidden)
 ```
 
 ## Naming and Identifiers
@@ -116,13 +117,14 @@ Work is a multi-task orchestrator for Claude Code. It decomposes plans into task
 
 ### Key packages
 
-- **`internal/cli/`** — Cobra commands. `root.go` wires commands into Worktree and Task groups. `helpers.go` has location detection and completion helpers. `context.go` is the hidden `work context` command (SessionStart hook).
+- **`internal/cli/work/`** — Cobra commands for the `work` binary. Worktree management, session lifecycle, context hook.
+- **`internal/cli/task/`** — Cobra commands for the `task` binary. Task listing, show, tree, set-status, MCP server.
 - **`internal/location/`** — Detects current working context from CWD and git branch. `Branch` is the full dot-separated path; empty at the root repo.
 - **`internal/paths/`** — Path construction helpers. `ParentBranch`/`BranchID` split dot-notation branches.
 - **`internal/task/`** — Task data model (ID, summary, depends_on, status, files, description, acceptance, context). Tasks are JSON files in parent workspaces.
 - **`internal/session/`** — Worktree setup and Claude execution. `Run` creates the worktree, workspace, symlinks, then execs into `claude`.
 - **`internal/git/`** — Git worktree creation/removal and branch helpers.
-- **`internal/mcp/`** — MCP server exposing `create_task` tool so Claude can create subtasks during planning.
+- **`internal/mcp/`** — MCP server implementation exposing `create_task` tool so Claude can create subtasks during planning.
 
 ### Task lifecycle
 
@@ -132,6 +134,6 @@ Work is a multi-task orchestrator for Claude Code. It decomposes plans into task
 
 Slash commands live in `commands/` at the repo root. Symlinked to `~/.claude/commands/` during installation.
 
-1. **`commands/work-plan.md`** — `/work-plan`. Human-driven planning session: goal capture, research, plan, task decomposition via the work MCP tool.
+1. **`commands/work-plan.md`** — `/work-plan`. Human-driven planning session: goal capture, research, plan, task decomposition via the task MCP tool.
 
 2. **`commands/work-execute.md`** — `/work-execute`. Run inside a task's Claude Code session to work on the assigned task and maintain a work log.

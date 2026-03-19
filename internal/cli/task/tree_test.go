@@ -1,14 +1,14 @@
-package cli
+package task
 
 import (
 	"strings"
 	"testing"
 
-	"github.com/cenkalti/work/internal/task"
+	taskpkg "github.com/cenkalti/work/internal/task"
 )
 
 func TestRunTree_BasicOrder(t *testing.T) {
-	tasks := []*task.Task{
+	tasks := []*taskpkg.Task{
 		{ID: "root-task", Summary: "root"},
 		{ID: "child-task", Summary: "child", DependsOn: []string{"root-task"}},
 	}
@@ -27,8 +27,8 @@ func TestRunTree_BasicOrder(t *testing.T) {
 		t.Error("output missing child-task")
 	}
 	// The tree prints tasks with no dependents at the top; their deps appear below.
-	// child-task has no dependents → it is the display root, printed first.
-	// root-task is child-task's dep → printed below.
+	// child-task has no dependents -> it is the display root, printed first.
+	// root-task is child-task's dep -> printed below.
 	posChild := strings.Index(out, "child-task")
 	posRoot := strings.Index(out, "root-task")
 	if posRoot < posChild {
@@ -37,7 +37,7 @@ func TestRunTree_BasicOrder(t *testing.T) {
 }
 
 func TestRunTree_FilterByID(t *testing.T) {
-	tasks := []*task.Task{
+	tasks := []*taskpkg.Task{
 		{ID: "task-a", Summary: "A"},
 		{ID: "task-b", Summary: "B", DependsOn: []string{"task-a"}},
 		{ID: "task-c", Summary: "C"},
@@ -62,7 +62,7 @@ func TestRunTree_FilterByID(t *testing.T) {
 }
 
 func TestRunTree_FilterNotFound(t *testing.T) {
-	tasks := []*task.Task{
+	tasks := []*taskpkg.Task{
 		{ID: "task-a", Summary: "A"},
 	}
 	dir := writeTasks(t, tasks)
@@ -75,7 +75,7 @@ func TestRunTree_FilterNotFound(t *testing.T) {
 
 func TestRunTree_CircularDependency(t *testing.T) {
 	// task-top has no dependents (it's a root), and depends on task-a which circles back.
-	tasks := []*task.Task{
+	tasks := []*taskpkg.Task{
 		{ID: "task-top", Summary: "top", DependsOn: []string{"task-a"}},
 		{ID: "task-a", Summary: "A", DependsOn: []string{"task-b"}},
 		{ID: "task-b", Summary: "B", DependsOn: []string{"task-a"}},
@@ -92,8 +92,8 @@ func TestRunTree_CircularDependency(t *testing.T) {
 }
 
 func TestRunTree_CompletedAnnotation(t *testing.T) {
-	tasks := []*task.Task{
-		{ID: "done-task", Summary: "done", Status: task.StatusCompleted},
+	tasks := []*taskpkg.Task{
+		{ID: "done-task", Summary: "done", Status: taskpkg.StatusCompleted},
 	}
 	dir := writeTasks(t, tasks)
 

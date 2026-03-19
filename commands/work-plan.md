@@ -55,17 +55,17 @@ Write everything to `plan.md`. Discuss with the human and revise until approved.
 
 ### Step 4: Task Decomposition
 
-Use the `create_task` tool (from the `work` MCP server) to create each task. Good tasks are:
+Use the `create_task` tool (from the `task` MCP server) to create each task. Good tasks are:
 
 - **Specific** — clear acceptance criteria, not vague ("add JWT auth to /login" not "work on auth")
 - **Small** — completable in one focused session (hours, not days); break large tasks down
 - **Minimal dependencies** — only depend on tasks that must genuinely come first
 - **Testable** — you know exactly when it's done
 
-After creating all tasks, run `work tree` to verify the dependency graph looks correct.
+After creating all tasks, run `task tree` to verify the dependency graph looks correct.
 
 ```bash
-work tree
+task tree
 ```
 
 ### Step 5: Execution Mode
@@ -75,8 +75,8 @@ Ask the human how they want to proceed:
 **Option A — Inline (this conversation):** Work through tasks sequentially, in dependency order.
 
 ```bash
-work tasks --ready              # show tasks with no pending dependencies
-work set-status <id> completed  # mark a task done
+task ls --ready              # show tasks with no pending dependencies
+task set-status <id> completed  # mark a task done
 ```
 
 Best for: ≤5 tasks, simple linear work, no parallelism needed.
@@ -84,7 +84,7 @@ Best for: ≤5 tasks, simple linear work, no parallelism needed.
 **Option B — Worktrees (separate agents):** Each task runs as an isolated Claude Code session in its own git worktree.
 
 ```bash
-work tasks --ready  # show what's ready
+task ls --ready  # show what's ready
 work run <id>       # launch a separate agent for a task
 ```
 

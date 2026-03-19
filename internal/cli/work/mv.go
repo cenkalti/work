@@ -1,4 +1,4 @@
-package cli
+package work
 
 import (
 	"fmt"
@@ -234,12 +234,12 @@ func moveTaskJSON(root, oldBranch, newBranch string) error {
 	newID := paths.BranchID(newBranch)
 
 	if oldParent == "" && newParent == "" {
-		return nil // root → root rename, no task JSON
+		return nil // root -> root rename, no task JSON
 	}
 
 	// Source task file.
 	if oldParent != "" {
-		oldFile := filepath.Join(paths.TasksDir(root, oldParent), oldID+".json")
+		oldFile := filepath.Join(paths.TasksDir(root, oldParent), oldID+".yaml")
 		if _, err := os.Stat(oldFile); err != nil {
 			return nil // no task file to move
 		}
@@ -248,7 +248,7 @@ func moveTaskJSON(root, oldBranch, newBranch string) error {
 			if err := os.MkdirAll(newTasksDir, 0755); err != nil {
 				return err
 			}
-			newFile := filepath.Join(newTasksDir, newID+".json")
+			newFile := filepath.Join(newTasksDir, newID+".yaml")
 			return os.Rename(oldFile, newFile)
 		}
 		// Moving to root — just remove from old parent (root tasks don't have JSON files).

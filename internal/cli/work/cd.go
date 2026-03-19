@@ -1,4 +1,4 @@
-package cli
+package work
 
 import (
 	"fmt"
@@ -12,8 +12,8 @@ import (
 
 func cdCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "cd [name]",
-		Short: "Change directory to a worktree (requires shell integration)",
+		Use:               "cd [name]",
+		Short:             "Change directory to a worktree (requires shell integration)",
 		Args:              cobra.MaximumNArgs(1),
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -18,7 +18,7 @@ func NewServer(tasksDir string) *server.MCPServer {
 
 func createTaskTool(tasksDir string) (mcp.Tool, server.ToolHandlerFunc) {
 	tool := mcp.NewTool("create_task",
-		mcp.WithDescription("Create a task JSON file in the tasks directory"),
+		mcp.WithDescription("Create a task file in the tasks directory"),
 		mcp.WithString("id",
 			mcp.Required(),
 			mcp.Description("Task ID in kebab-case (e.g. add-mcp-server)"),

@@ -1,13 +1,11 @@
-package cli
+package task
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/cenkalti/work/internal/paths"
-	"github.com/cenkalti/work/internal/task"
+	taskpkg "github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -30,14 +28,9 @@ func showCmd() *cobra.Command {
 }
 
 func runShow(tasksDir, id string) error {
-	data, err := os.ReadFile(filepath.Join(tasksDir, id+".json"))
+	t, err := taskpkg.Load(tasksDir, id)
 	if err != nil {
-		return fmt.Errorf("task %q not found", id)
-	}
-
-	var t task.Task
-	if err := json.Unmarshal(data, &t); err != nil {
-		return fmt.Errorf("parsing task: %w", err)
+		return err
 	}
 
 	out, err := yaml.Marshal(t)

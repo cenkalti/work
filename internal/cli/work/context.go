@@ -1,7 +1,6 @@
-package cli
+package work
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -58,17 +57,14 @@ func printTaskContext(rootRepo, branch string) error {
 		return nil
 	}
 
-	data, err := os.ReadFile(filepath.Join(paths.TasksDir(rootRepo, parentBranch), taskID+".json"))
+	tasksDir := paths.TasksDir(rootRepo, parentBranch)
+	t, err := task.Load(tasksDir, taskID)
 	if err != nil {
-		return fmt.Errorf("reading task file: %w", err)
-	}
-	var t task.Task
-	if err := json.Unmarshal(data, &t); err != nil {
-		return fmt.Errorf("parsing task: %w", err)
+		return err
 	}
 
 	parentContext := readFileContents(filepath.Join(paths.Workspace(rootRepo, parentBranch), "plan.md"))
-	printChildTaskContext(parentContext, &t)
+	printChildTaskContext(parentContext, t)
 	return nil
 }
 
@@ -81,7 +77,7 @@ func printRootTaskContext(branch string) {
 	printAvailableCommands()
 	fmt.Printf("## Key Files\n\n")
 	fmt.Println("- `workspace/plan.md` — The implementation plan (created during `/work-plan`)")
-	fmt.Println("- `workspace/tasks/` — Subtask JSON files (created via the work MCP tool)")
+	fmt.Println("- `workspace/tasks/` — Subtask JSON files (created via the task MCP tool)")
 }
 
 func printChildTaskContext(parentContext string, t *task.Task) {
@@ -121,11 +117,11 @@ func printChildTaskContext(parentContext string, t *task.Task) {
 func printAvailableCommands() {
 	fmt.Printf("## Available Commands\n\n")
 	fmt.Println("```bash")
-	fmt.Println("work tasks                       # List subtasks")
-	fmt.Println("work tasks --ready               # Subtasks ready to work on")
-	fmt.Println("work show <id>                   # Show details of a subtask")
-	fmt.Println("work tree [id]                   # Show subtask dependency tree")
-	fmt.Println("work set-status <id> <status>    # Set subtask status")
+	fmt.Println("task ls                        # List subtasks")
+	fmt.Println("task ls --ready                # Subtasks ready to work on")
+	fmt.Println("task show <id>                   # Show details of a subtask")
+	fmt.Println("task tree [id]                   # Show subtask dependency tree")
+	fmt.Println("task set-status <id> <status>    # Set subtask status")
 	fmt.Println("work run <id>                    # Start a Claude Code session for a subtask")
 	fmt.Println("work rm <id>                     # Remove a subtask worktree")
 	fmt.Printf("```\n\n")
