@@ -15,12 +15,11 @@ func mcpCmd() *cobra.Command {
 		Short:  "Start MCP server for task creation",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			loc := detectLocation(cmd)
-			branch, err := loc.ResolveBranch("")
+			cwd, err := os.Getwd()
 			if err != nil {
 				return err
 			}
-			s := mcpserver.NewServer(paths.TasksDir(loc.RootRepo, branch))
+			s := mcpserver.NewServer(paths.LocalTasksDir(cwd))
 			return server.NewStdioServer(s).Listen(cmd.Context(), os.Stdin, os.Stdout)
 		},
 	}

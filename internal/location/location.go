@@ -37,32 +37,6 @@ func (l *Location) WorktreeRoot() string {
 	return paths.WorktreeRoot(l.RootRepo)
 }
 
-// ResolveName converts a name to a full branch name.
-// If name contains a dot, it's used as-is (absolute).
-// If inside a task worktree, the name is treated as a child task ID appended to the current branch.
-// Otherwise it's a root task name.
-func (l *Location) ResolveName(name string) string {
-	if strings.Contains(name, ".") {
-		return name
-	}
-	if !l.IsRoot() {
-		return l.Branch + "." + name
-	}
-	return name
-}
-
-// ResolveBranch returns explicit if non-empty, otherwise the current branch.
-// Returns an error if at the root repo with no explicit branch.
-func (l *Location) ResolveBranch(explicit string) (string, error) {
-	if explicit != "" {
-		return explicit, nil
-	}
-	if !l.IsRoot() {
-		return l.Branch, nil
-	}
-	return "", fmt.Errorf("not in a task worktree; specify a task explicitly")
-}
-
 // Detect determines the current working context by examining
 // the working directory and current branch.
 func Detect() (*Location, error) {
