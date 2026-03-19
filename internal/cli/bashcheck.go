@@ -142,6 +142,7 @@ func classifyCommand(apiKey, command string) (string, string, error) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-api-key", apiKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
