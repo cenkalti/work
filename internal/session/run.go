@@ -52,18 +52,6 @@ func Run(ctx *location.Location, branch string) error {
 		}
 	}
 
-	mcpJSON := `{
-  "mcpServers": {
-    "work": {
-      "command": "work",
-      "args": ["mcp"]
-    }
-  }
-}`
-	if err := os.WriteFile(filepath.Join(wtPath, ".mcp.json"), []byte(mcpJSON), 0644); err != nil {
-		return fmt.Errorf("writing .mcp.json: %w", err)
-	}
-
 	success = true
 	return ExecClaude(wtPath)
 }
