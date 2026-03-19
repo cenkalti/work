@@ -36,7 +36,7 @@ const bashClassifyPrompt = `Classify this bash command to decide whether it need
 Compound commands: For pipes (|), chains (&&, ;, ||), and subshells, evaluate ALL components. If any component would be 'ask', the whole command is 'ask'.
 When in doubt, return 'ask'.
 
-Respond with ONLY a JSON object: {"decision":"allow|ask","reason":"brief explanation"}`
+Use the classify_command tool to return your decision.`
 
 func bashCheckCmd() *cobra.Command {
 	return &cobra.Command{
@@ -58,7 +58,7 @@ type hookInput struct {
 
 type hookOutput struct {
 	HookSpecificOutput struct {
-		HookEventName          string `json:"hookEventName"`
+		HookEventName            string `json:"hookEventName"`
 		PermissionDecision       string `json:"permissionDecision"`
 		PermissionDecisionReason string `json:"permissionDecisionReason"`
 	} `json:"hookSpecificOutput"`
@@ -98,12 +98,37 @@ func runBashCheck(stdin io.Reader, stdout io.Writer) error {
 
 func classifyCommand(apiKey, command string) (string, string, error) {
 	reqBody := map[string]any{
-		"model":      "claude-haiku-4-5-20251001",
+		"model":      "claude-haiku-4-5",
 		"max_tokens": 256,
 		"messages": []map[string]string{
 			{"role": "user", "content": "Command: " + command},
 		},
 		"system": bashClassifyPrompt,
+		"tool_choice": map[string]string{
+			"type": "tool",
+			"name": "classify_command",
+		},
+		"tools": []map[string]any{
+			{
+				"name":        "classify_command",
+				"description": "Return the classification decision for a bash command.",
+				"input_schema": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"decision": map[string]any{
+							"type":        "string",
+							"enum":        []string{"allow", "ask"},
+							"description": "Whether to allow the command or ask the user.",
+						},
+						"reason": map[string]any{
+							"type":        "string",
+							"description": "Brief explanation of why.",
+						},
+					},
+					"required": []string{"decision", "reason"},
+				},
+			},
+		},
 	}
 
 	body, err := json.Marshal(reqBody)
@@ -117,7 +142,6 @@ func classifyCommand(apiKey, command string) (string, string, error) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-api-key", apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
@@ -133,40 +157,32 @@ func classifyCommand(apiKey, command string) (string, string, error) {
 
 	var apiResp struct {
 		Content []struct {
-			Text string `json:"text"`
+			Type  string          `json:"type"`
+			Input json.RawMessage `json:"input"`
 		} `json:"content"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
 		return "", "", fmt.Errorf("decode response: %w", err)
 	}
 
-	if len(apiResp.Content) == 0 {
-		return "", "", fmt.Errorf("empty response from API")
-	}
-
-	text := strings.TrimSpace(apiResp.Content[0].Text)
-	// Strip markdown code fences if present
-	if strings.HasPrefix(text, "```") {
-		lines := strings.Split(text, "\n")
-		// Remove first line (```json) and last line (```)
-		if len(lines) >= 3 {
-			text = strings.TrimSpace(strings.Join(lines[1:len(lines)-1], "\n"))
+	for _, block := range apiResp.Content {
+		if block.Type != "tool_use" {
+			continue
 		}
+		var result struct {
+			Decision string `json:"decision"`
+			Reason   string `json:"reason"`
+		}
+		if err := json.Unmarshal(block.Input, &result); err != nil {
+			return "", "", fmt.Errorf("parse tool input: %w", err)
+		}
+		if result.Decision != "allow" && result.Decision != "ask" {
+			return "ask", "unexpected decision: " + result.Decision, nil
+		}
+		return result.Decision, result.Reason, nil
 	}
 
-	var result struct {
-		Decision string `json:"decision"`
-		Reason   string `json:"reason"`
-	}
-	if err := json.Unmarshal([]byte(text), &result); err != nil {
-		return "", "", fmt.Errorf("parse classification %q: %w", text, err)
-	}
-
-	if result.Decision != "allow" && result.Decision != "ask" {
-		return "ask", "unexpected decision: " + result.Decision, nil
-	}
-
-	return result.Decision, result.Reason, nil
+	return "", "", fmt.Errorf("no tool_use block in response")
 }
 
 func loadEnvValue(key string) string {
