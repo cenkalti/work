@@ -8,12 +8,7 @@ go build -o ~/go/bin/work ./cmd/work/
 
 ## Installation
 
-```bash
-./install.sh
-```
-
-This installs the binary, adds shell integration to `~/.zshrc`, copies slash commands to `~/.claude/commands/`, and adds the `work context` hook to `~/.claude/settings.json`.
-
+See [README.md](README.md).
 
 ## Commands
 
@@ -125,17 +120,17 @@ Work is a multi-task orchestrator for Claude Code. It decomposes plans into task
 - **`internal/location/`** — Detects current working context from CWD and git branch. `Branch` is the full dot-separated path; empty at the root repo.
 - **`internal/paths/`** — Path construction helpers. `ParentBranch`/`BranchID` split dot-notation branches.
 - **`internal/task/`** — Task data model (ID, summary, depends_on, status, files, description, acceptance, context). Tasks are JSON files in parent workspaces.
-- **`internal/session/`** — Worktree setup and Claude execution. `Run` creates the worktree, workspace, symlinks, and `.mcp.json`, then execs into `claude`.
+- **`internal/session/`** — Worktree setup and Claude execution. `Run` creates the worktree, workspace, symlinks, then execs into `claude`.
 - **`internal/git/`** — Git worktree creation/removal and branch helpers.
 - **`internal/mcp/`** — MCP server exposing `create_task` tool so Claude can create subtasks during planning.
 
 ### Task lifecycle
 
-`work run <name>` → creates git worktree + branch → creates workspace → symlinks `workspace/` → writes `.mcp.json` → execs into `claude`. On session start, the `SessionStart` hook calls `work context`, which injects task details into the conversation.
+`work run <name>` → creates git worktree + branch → creates workspace → symlinks `workspace/` → execs into `claude`. On session start, the `SessionStart` hook calls `work context`, which injects task details into the conversation.
 
 ## Slash Commands
 
-Slash commands live in `commands/` at the repo root. Installed to `~/.claude/commands/` by `install.sh`.
+Slash commands live in `commands/` at the repo root. Symlinked to `~/.claude/commands/` during installation.
 
 1. **`commands/work-plan.md`** — `/work-plan`. Human-driven planning session: goal capture, research, plan, task decomposition via the work MCP tool.
 
