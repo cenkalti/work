@@ -39,7 +39,26 @@ ln -sf /Users/cenk/projects/work/commands/*.md ~/.claude/commands/
 }
 ```
 
-5. Add the `task` MCP server globally:
+5. Add the `work bash-check` PreToolUse hook to `~/.claude/settings.json`:
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "work bash-check"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+6. Add the `task` MCP server globally:
 ```bash
 claude mcp add --transport stdio --scope user task -- task mcp
 ```
