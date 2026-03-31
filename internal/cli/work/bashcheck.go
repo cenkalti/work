@@ -31,7 +31,8 @@ const bashClassifyPrompt = `Classify this bash command to decide whether it need
 12. ASK (make clean/install): make clean, make install — these are destructive or system-modifying.
 13. ASK (non-GET HTTP requests): curl/wget with -X POST, -X PUT, -X DELETE, -d, --data, or any flag implying a non-GET request.
 14. ALLOW (test resource deletion): If a delete/destroy/remove command targets something that appears to be a test resource (the name or path contains 'test', 'tmp', 'temp', 'mock', 'fixture', 'fake', 'dummy', 'scratch', 'experimental'), allow it. EXCEPTION: kubectl delete namespace — always ask, even for test namespaces.
-15. ASK (all other destructive): Any command that modifies state not covered above — rm, mv, chmod, chown, git reset, git push --force, docker rm, kubectl delete (non-test), package removal.
+15. ASK (GitHub write operations): Any gh command that creates, modifies, or comments on GitHub resources — gh pr create, gh pr edit, gh pr comment, gh pr merge, gh pr close, gh pr review, gh issue create, gh issue edit, gh issue comment, gh issue close, gh release create. Read-only gh commands (gh pr list, gh pr view, gh issue list, gh issue view, gh pr checks, gh pr diff) are allowed under rule 1.
+16. ASK (all other destructive): Any command that modifies state not covered above — rm, mv, chmod, chown, git reset, git push --force, docker rm, kubectl delete (non-test), package removal.
 
 Compound commands: For pipes (|), chains (&&, ;, ||), and subshells, evaluate ALL components. If any component would be 'ask', the whole command is 'ask'.
 When in doubt, return 'ask'.
