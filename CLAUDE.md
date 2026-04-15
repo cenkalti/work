@@ -33,6 +33,23 @@ task set-status <id> <status> # set task status (pending, active, completed)
 task mcp                     # start MCP server for task creation (hidden)
 ```
 
+### Harness MCP Server (`harness` binary, Karpathy Guidelines)
+
+MCP server that exposes six tools for applying and evaluating the Karpathy coding principles. Requires `ANTHROPIC_API_KEY`.
+
+```bash
+harness [-model <id>]        # start MCP server on stdin/stdout
+```
+
+Tools exposed:
+- `think(task)` — Surface assumptions, interpretations, tradeoffs before coding (Principle 1)
+- `simplify(code, context?)` — Score complexity 0-10, list over-engineering issues (Principle 2)
+- `surgical(diff?, task?)` — Check if diff is surgical; auto-runs `git diff --staged` if no diff given (Principle 3)
+- `goal(task)` — Transform vague task into numbered plan with `→ verify:` steps (Principle 4)
+- `score(response)` — Score any LLM response against all four principles
+- `bench(guidelines?)` — Run 8 built-in benchmark cases, compare baseline vs. with-guidelines
+```
+
 ## Naming and Identifiers
 
 All identifiers are plain strings. No UUIDs or auto-generated IDs.
