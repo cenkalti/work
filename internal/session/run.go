@@ -3,8 +3,6 @@ package session
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"syscall"
 
 	"github.com/cenkalti/work/internal/git"
 	"github.com/cenkalti/work/internal/location"
@@ -12,23 +10,23 @@ import (
 	"github.com/cenkalti/work/internal/task"
 )
 
-// Run sets up and launches a Claude Code session for the given branch.
-// For root tasks (no dots in branch), a planning-focused session is started.
-// For child tasks, the task file is read from the parent's tasks dir and marked active.
-func Run(ctx *location.Location, branch string) error {
+// Create sets up a worktree and workspace for the given branch.
+// For child tasks, the task file is marked active.
+// Returns the worktree path.
+func Create(ctx *location.Location, branch string) (string, error) {
 	parentBranch := paths.ParentBranch(branch)
 	taskID := paths.BranchID(branch)
 
 	if parentBranch != "" {
 		if err := setTaskActive(paths.TasksDir(ctx.RootRepo, parentBranch), taskID); err != nil {
-			return err
+			return "", err
 		}
 	}
 
 	wtPath := paths.Worktree(ctx.RootRepo, branch)
 	created, err := git.CreateWorktree(ctx.RootRepo, wtPath, branch, git.DefaultBranch(ctx.RootRepo))
 	if err != nil {
-		return fmt.Errorf("creating worktree: %w", err)
+		return "", fmt.Errorf("creating worktree: %w", err)
 	}
 
 	success := false
@@ -40,18 +38,18 @@ func Run(ctx *location.Location, branch string) error {
 
 	spacePath := paths.Workspace(ctx.RootRepo, branch)
 	if err := os.MkdirAll(spacePath, 0755); err != nil {
-		return fmt.Errorf("creating workspace: %w", err)
+		return "", fmt.Errorf("creating workspace: %w", err)
 	}
 
 	wsLink := paths.WorkspaceLink(wtPath)
 	if _, err := os.Lstat(wsLink); os.IsNotExist(err) {
 		if err := os.Symlink(spacePath, wsLink); err != nil {
-			return fmt.Errorf("creating workspace symlink: %w", err)
+			return "", fmt.Errorf("creating workspace symlink: %w", err)
 		}
 	}
 
 	success = true
-	return ExecClaude(wtPath)
+	return wtPath, nil
 }
 
 func setTaskActive(tasksDir, taskID string) error {
@@ -67,15 +65,4 @@ func setTaskActive(tasksDir, taskID string) error {
 		return fmt.Errorf("updating task status: %w", err)
 	}
 	return nil
-}
-
-func ExecClaude(wtPath string) error {
-	if err := os.Chdir(wtPath); err != nil {
-		return fmt.Errorf("changing to worktree dir: %w", err)
-	}
-	claudeBin, err := exec.LookPath("claude")
-	if err != nil {
-		return fmt.Errorf("claude not found in PATH: %w", err)
-	}
-	return syscall.Exec(claudeBin, []string{"claude"}, os.Environ())
 }
