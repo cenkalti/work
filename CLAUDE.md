@@ -15,7 +15,7 @@ See [README.md](README.md).
 ### Worktree Commands (absolute dot-separated branch names)
 
 ```bash
-work run [name]              # no arg → start session here; name → create worktree and start session
+work mk <name>               # create worktree and workspace, print path
 work id                      # print the current task's dot-separated ID (see below)
 work ls                      # list all worktrees
 work mv <src> <dst>          # move/rename task (use . for root)
@@ -23,13 +23,22 @@ work rm <name>               # remove worktree and branch
 work cd [name]               # change directory to worktree (requires shell integration)
 ```
 
+### Agent Commands (`agent` binary)
+
+```bash
+agent run                    # start or resume a claude session in the current worktree
+agent ls                     # list agents across all projects (--running, --active)
+```
+
 ### Task Commands (separate `task` binary, operates on ./workspace/tasks/)
 
 ```bash
-task ls                    # list subtasks (--ready, --active, --blocked, --pending, --completed)
+task ls                      # list subtasks (--ready, --active, --blocked, --pending, --completed)
 task show <id>               # show task details as YAML
+task edit <id>               # edit task
 task tree [id]               # dependency tree
 task set-status <id> <status> # set task status (pending, active, completed)
+task rm <id>                 # remove task
 task mcp                     # start MCP server for task creation (hidden)
 ```
 
@@ -134,18 +143,20 @@ Work is a multi-task orchestrator for Claude Code. It decomposes plans into task
 
 ### Key packages
 
-- **`internal/cli/work/`** — Cobra commands for the `work` binary. Worktree management, session lifecycle, context hook.
+- **`internal/cli/work/`** — Cobra commands for the `work` binary. Worktree management and context hook.
+- **`internal/cli/agent/`** — Cobra commands for the `agent` binary. Session lifecycle (run, ls) and Claude Code hooks.
 - **`internal/cli/task/`** — Cobra commands for the `task` binary. Task listing, show, tree, set-status, MCP server.
 - **`internal/location/`** — Detects current working context from CWD and git branch. `Branch` is the full dot-separated path; empty at the root repo.
 - **`internal/paths/`** — Path construction helpers. `ParentBranch`/`BranchID` split dot-notation branches.
 - **`internal/task/`** — Task data model (ID, summary, depends_on, status, files, description, acceptance, context). Tasks are JSON files in parent workspaces.
-- **`internal/session/`** — Worktree setup and Claude execution. `Run` creates the worktree, workspace, symlinks, then execs into `claude`.
+- **`internal/session/`** — Worktree and workspace setup. Creates worktree, workspace directory, and symlinks.
+- **`internal/agent/`** — Agent state management (read/write `.agent` files, detect running sessions).
 - **`internal/git/`** — Git worktree creation/removal and branch helpers.
 - **`internal/mcp/`** — MCP server implementation exposing `create_task` tool so Claude can create subtasks during planning.
 
 ### Task lifecycle
 
-`work run <name>` → creates git worktree + branch → creates workspace → symlinks `workspace/` → execs into `claude`. On session start, the `SessionStart` hook calls `work context`, which injects task details into the conversation.
+`work mk <name>` → creates git worktree + branch → creates workspace → symlinks `workspace/`. Then `agent run` starts or resumes a claude session in the worktree. On session start, the `SessionStart` hook calls `work context`, which injects task details into the conversation.
 
 ## Slash Commands
 

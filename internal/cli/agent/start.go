@@ -18,7 +18,7 @@ func startCmd() *cobra.Command {
 				return err
 			}
 			existing, err := agent.Read(".")
-			if err == nil && existing.Status != agent.StatusEnded {
+			if err == nil && existing.ID != input.SessionID && existing.Status != agent.StatusEnded {
 				if agent.IsSessionRunning(existing.ID) {
 					return fmt.Errorf("another session is already running: %s", existing.ID)
 				}
