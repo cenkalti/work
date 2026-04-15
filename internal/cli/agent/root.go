@@ -13,7 +13,7 @@ func Root() *cobra.Command {
 	cmd.AddCommand(
 		runCmd(),
 		startCmd(),
-		stopCmd(),
+		endCmd(),
 		statusCmd(),
 		lsCmd(),
 	)

@@ -5,9 +5,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func stopCmd() *cobra.Command {
+func endCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:    "stop",
+		Use:    "end",
 		Short:  "Mark agent session as ended (SessionEnd hook)",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
