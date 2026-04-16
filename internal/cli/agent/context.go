@@ -1,4 +1,4 @@
-package work
+package agent
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cenkalti/work/internal/location"
 	"github.com/cenkalti/work/internal/paths"
 	"github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
@@ -25,7 +26,7 @@ Install in ~/.claude/settings.json to automatically inject context at session st
       "SessionStart": [
         {
           "matcher": "",
-          "hooks": [{"type": "command", "command": "work context"}]
+          "hooks": [{"type": "command", "command": "agent hook context"}]
         }
       ]
     }
@@ -33,7 +34,10 @@ Install in ~/.claude/settings.json to automatically inject context at session st
 
 Exits silently if not inside a work-managed worktree.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			loc := detectLocation(cmd)
+			loc, err := location.Detect()
+			if err != nil {
+				return err
+			}
 			if loc.IsRoot() || !isWorkManaged(loc.RootRepo) {
 				return nil
 			}
@@ -122,7 +126,8 @@ func printAvailableCommands() {
 	fmt.Println("task show <id>                   # Show details of a subtask")
 	fmt.Println("task tree [id]                   # Show subtask dependency tree")
 	fmt.Println("task set-status <id> <status>    # Set subtask status")
-	fmt.Println("work run <id>                    # Start a Claude Code session for a subtask")
+	fmt.Println("work mk <id>                     # Create a worktree for a subtask")
+	fmt.Println("agent run                        # Start a Claude Code session")
 	fmt.Println("work rm <id>                     # Remove a subtask worktree")
 	fmt.Printf("```\n\n")
 }

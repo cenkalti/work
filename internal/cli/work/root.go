@@ -18,7 +18,6 @@ func Root() *cobra.Command {
 		mvCmd(),
 		removeCmd(),
 		cdCmd(),
-		contextCmd(),
 	)
 
 	cmd.CompletionOptions.HiddenDefaultCmd = true

@@ -156,7 +156,7 @@ Work is a multi-task orchestrator for Claude Code. It decomposes plans into task
 
 ### Task lifecycle
 
-`work mk <name>` → creates git worktree + branch → creates workspace → symlinks `workspace/`. Then `agent run` starts or resumes a claude session in the worktree. On session start, the `SessionStart` hook calls `work context`, which injects task details into the conversation.
+`work mk <name>` → creates git worktree + branch → creates workspace → symlinks `workspace/`. Then `agent run` starts or resumes a claude session in the worktree. On session start, the `SessionStart` hook calls `agent hook context`, which injects task details into the conversation.
 
 ## Slash Commands
 

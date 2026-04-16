@@ -16,6 +16,7 @@ func Root() *cobra.Command {
 		Hidden: true,
 	}
 	hook.AddCommand(
+		contextCmd(),
 		startCmd(),
 		endCmd(),
 		statusCmd(),

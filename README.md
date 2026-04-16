@@ -20,7 +20,7 @@ mkdir -p ~/.claude/commands
 ln -sf /Users/cenk/projects/work/commands/*.md ~/.claude/commands/
 ```
 
-4. Add the `work context` SessionStart hook to `~/.claude/settings.json`:
+4. Add the `agent hook context` SessionStart hook to `~/.claude/settings.json`:
 ```json
 {
   "hooks": {
@@ -30,7 +30,7 @@ ln -sf /Users/cenk/projects/work/commands/*.md ~/.claude/commands/
         "hooks": [
           {
             "type": "command",
-            "command": "work context"
+            "command": "agent hook context"
           }
         ]
       }
@@ -39,7 +39,7 @@ ln -sf /Users/cenk/projects/work/commands/*.md ~/.claude/commands/
 }
 ```
 
-5. Add the `work bash-check` PreToolUse hook to `~/.claude/settings.json`:
+5. Add the `agent hook bash-check` PreToolUse hook to `~/.claude/settings.json`:
 ```json
 {
   "hooks": {
@@ -49,7 +49,7 @@ ln -sf /Users/cenk/projects/work/commands/*.md ~/.claude/commands/
         "hooks": [
           {
             "type": "command",
-            "command": "work bash-check"
+            "command": "agent hook bash-check"
           }
         ]
       }

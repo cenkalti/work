@@ -17,7 +17,6 @@ func Root() *cobra.Command {
 		treeCmd(),
 		setStatusCmd(),
 		rmCmd(),
-		migrateCmd(),
 		mcpCmd(),
 	)
 
