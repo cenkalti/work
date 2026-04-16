@@ -213,19 +213,7 @@ func setupCommands() error {
 		return err
 	}
 
-	// Find the source commands directory relative to this binary.
-	binPath, err := exec.LookPath("agent")
-	if err != nil {
-		return fmt.Errorf("agent not found in PATH")
-	}
-	binPath, err = filepath.EvalSymlinks(binPath)
-	if err != nil {
-		return err
-	}
-
-	// Walk up from the binary to find the project root with commands/.
-	// The binary is at $GOPATH/bin/agent, so we need another approach.
-	// Use the working directory instead — setup should be run from the project root.
+	// setup must be run from the project root containing commands/.
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
