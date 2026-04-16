@@ -46,7 +46,7 @@ func hookCmd() *cobra.Command {
 				return handlePreToolUse(&p)
 			case "UserPromptSubmit":
 				return handleUserPromptSubmit()
-			case "Stop":
+			case "Stop", "StopFailure", "PermissionRequest", "Elicitation":
 				return handleStop()
 			case "Notification":
 				return handleNotification(&p)
@@ -93,8 +93,6 @@ func handleSessionEnd() error {
 }
 
 func handlePreToolUse(p *hookPayload) error {
-	setAgentStatus(agentpkg.StatusRunning)
-	clearInbox()
 	if p.ToolName == "Bash" {
 		return runBashCheck(p.ToolInput.Command, os.Stdout)
 	}

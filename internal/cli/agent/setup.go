@@ -31,7 +31,10 @@ var hookEvents = []string{
 	"PreToolUse",
 	"UserPromptSubmit",
 	"Stop",
+	"StopFailure",
 	"Notification",
+	"PermissionRequest",
+	"Elicitation",
 }
 
 func desiredHookGroups() []hookGroup {
