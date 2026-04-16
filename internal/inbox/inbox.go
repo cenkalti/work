@@ -2,6 +2,7 @@ package inbox
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -76,21 +77,23 @@ func List() ([]*Message, error) {
 		if !pd.IsDir() {
 			continue
 		}
-		entries, err := os.ReadDir(filepath.Join(dir, pd.Name()))
+		projectDir := filepath.Join(dir, pd.Name())
+		entries, err := os.ReadDir(projectDir)
 		if err != nil {
-			continue
+			return nil, fmt.Errorf("reading %s: %w", projectDir, err)
 		}
 		for _, e := range entries {
 			if filepath.Ext(e.Name()) != ".json" {
 				continue
 			}
-			data, err := os.ReadFile(filepath.Join(dir, pd.Name(), e.Name()))
+			msgPath := filepath.Join(projectDir, e.Name())
+			data, err := os.ReadFile(msgPath)
 			if err != nil {
-				continue
+				return nil, fmt.Errorf("reading %s: %w", msgPath, err)
 			}
 			var msg Message
 			if err := json.Unmarshal(data, &msg); err != nil {
-				continue
+				return nil, fmt.Errorf("parsing %s: %w", msgPath, err)
 			}
 			msgs = append(msgs, &msg)
 		}
