@@ -21,6 +21,7 @@ func Root() *cobra.Command {
 		endCmd(),
 		statusCmd(),
 		bashCheckCmd(),
+		notifyCmd(),
 	)
 
 	cmd.AddCommand(
@@ -28,6 +29,7 @@ func Root() *cobra.Command {
 		runCmd(),
 		hook,
 		lsCmd(),
+		inboxCmd(),
 	)
 
 	cmd.CompletionOptions.HiddenDefaultCmd = true

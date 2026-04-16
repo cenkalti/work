@@ -2,8 +2,11 @@ package agent
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/cenkalti/work/internal/agent"
+	"github.com/cenkalti/work/internal/inbox"
+	"github.com/cenkalti/work/internal/location"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +27,15 @@ func statusCmd() *cobra.Command {
 				return nil
 			}
 			existing.Status = status
-			return agent.Write(".", existing)
+			if err := agent.Write(".", existing); err != nil {
+				return err
+			}
+			if status == agent.StatusRunning {
+				if loc, err := location.Detect(); err == nil {
+					_ = inbox.Delete(filepath.Base(loc.RootRepo), loc.Branch)
+				}
+			}
+			return nil
 		},
 	}
 }

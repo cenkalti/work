@@ -45,6 +45,11 @@ var desiredHooks = map[string][]hookGroup{
 			{Type: "command", Command: "agent hook bash-check"},
 		}},
 	},
+	"UserPromptSubmit": {
+		{Matcher: "", Hooks: []hookEntry{
+			{Type: "command", Command: "agent hook status running"},
+		}},
+	},
 	"Stop": {
 		{Matcher: "", Hooks: []hookEntry{
 			{Type: "command", Command: "agent hook status idle"},
@@ -53,6 +58,7 @@ var desiredHooks = map[string][]hookGroup{
 	"Notification": {
 		{Matcher: "", Hooks: []hookEntry{
 			{Type: "command", Command: "agent hook status idle"},
+			{Type: "command", Command: "agent hook notify"},
 		}},
 	},
 }
