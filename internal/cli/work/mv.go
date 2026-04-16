@@ -235,7 +235,9 @@ func moveTask(root, oldBranch, newBranch string) error {
 		// Update workspace symlink in the worktree.
 		newSpace := paths.Workspace(root, newBranch)
 		wsLink := paths.WorkspaceLink(newWT)
-		_ = os.Remove(wsLink)
+		if err := os.Remove(wsLink); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("removing old workspace symlink: %w", err)
+		}
 		if err := os.Symlink(newSpace, wsLink); err != nil {
 			return fmt.Errorf("updating workspace symlink: %w", err)
 		}
@@ -330,7 +332,9 @@ func moveFromRoot(root, dst string) error {
 
 	// Create workspace symlink in the new worktree.
 	wsLink := paths.WorkspaceLink(wtPath)
-	_ = os.Remove(wsLink)
+	if err := os.Remove(wsLink); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("removing old workspace symlink: %w", err)
+	}
 	if err := os.Symlink(dstSpace, wsLink); err != nil {
 		return fmt.Errorf("creating workspace symlink: %w", err)
 	}
