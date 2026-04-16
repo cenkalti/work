@@ -126,7 +126,7 @@ func benchTool(s *server.MCPServer) (mcp.Tool, server.ToolHandlerFunc) {
 		var sb strings.Builder
 		sb.WriteString("Benchmark Results\n")
 		sb.WriteString("=================\n\n")
-		sb.WriteString(fmt.Sprintf("%-25s  %8s  %15s  %6s  %9s\n", "PRINCIPLE", "BASELINE", "WITH GUIDELINES", "DELTA", "W/T/L"))
+		fmt.Fprintf(&sb, "%-25s  %8s  %15s  %6s  %9s\n", "PRINCIPLE", "BASELINE", "WITH GUIDELINES", "DELTA", "W/T/L")
 		sb.WriteString(strings.Repeat("-", 70) + "\n")
 		for _, p := range All {
 			a := aggMap[p.ID]
@@ -136,8 +136,8 @@ func benchTool(s *server.MCPServer) (mcp.Tool, server.ToolHandlerFunc) {
 			base := float64(a.baselineSum) / float64(a.count)
 			guide := float64(a.guidelinesSum) / float64(a.count)
 			delta := guide - base
-			sb.WriteString(fmt.Sprintf("%-25s  %8.1f  %15.1f  %+6.1f  %d/%d/%d\n",
-				a.name, base, guide, delta, a.wins, a.ties, a.losses))
+			fmt.Fprintf(&sb, "%-25s  %8.1f  %15.1f  %+6.1f  %d/%d/%d\n",
+				a.name, base, guide, delta, a.wins, a.ties, a.losses)
 		}
 		return mcp.NewToolResultText(sb.String()), nil
 	}

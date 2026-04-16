@@ -32,7 +32,7 @@ func scoreTool(s *server.MCPServer) (mcp.Tool, server.ToolHandlerFunc) {
 		sb.WriteString("Karpathy Principles Score\n")
 		sb.WriteString("=========================\n\n")
 		for _, s := range scores {
-			sb.WriteString(fmt.Sprintf("**%s**: %d/10\n%s\n\n", s.Principle, s.Value, s.Reasoning))
+			fmt.Fprintf(&sb, "**%s**: %d/10\n%s\n\n", s.Principle, s.Value, s.Reasoning)
 		}
 		return mcp.NewToolResultText(sb.String()), nil
 	}
