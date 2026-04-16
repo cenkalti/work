@@ -33,10 +33,14 @@ func captureStdout(t *testing.T, f func()) string {
 	old := os.Stdout
 	os.Stdout = w
 	f()
-	w.Close()
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
 	os.Stdout = old
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatal(err)
+	}
 	return buf.String()
 }
 

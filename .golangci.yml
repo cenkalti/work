@@ -1,5 +1,9 @@
 version: "2"
 
 linters:
-  disable:
-    - errcheck
+  settings:
+    errcheck:
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintln
+        - fmt.Fprintf

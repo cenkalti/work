@@ -84,15 +84,18 @@ f:close()
 `, code, resultPath)
 
 	if _, err := luaFile.WriteString(wrapper); err != nil {
-		luaFile.Close()
-		os.Remove(luaPath)
+		_ = luaFile.Close()
+		_ = os.Remove(luaPath)
 		return "", fmt.Errorf("write lua file: %w", err)
 	}
-	luaFile.Close()
+	if err := luaFile.Close(); err != nil {
+		_ = os.Remove(luaPath)
+		return "", fmt.Errorf("close lua file: %w", err)
+	}
 
 	defer func() {
-		os.Remove(luaPath)
-		os.Remove(resultPath)
+		_ = os.Remove(luaPath)
+		_ = os.Remove(resultPath)
 	}()
 
 	out, err := exec.Command(

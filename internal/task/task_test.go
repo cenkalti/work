@@ -52,7 +52,9 @@ func TestWriteToFile_IDValidation(t *testing.T) {
 		if err := tk.WriteToFile(dir); err != nil {
 			t.Errorf("valid ID %q rejected: %v", id, err)
 		}
-		os.Remove(dir + "/" + id + ".yaml")
+		if err := os.Remove(dir + "/" + id + ".yaml"); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	invalid := []string{

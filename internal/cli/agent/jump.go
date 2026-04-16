@@ -153,7 +153,9 @@ func activateWezTerm(tabID, paneID int, tty string) error {
 		}
 		val := base64.StdEncoding.EncodeToString([]byte("1"))
 		_, err = fmt.Fprintf(f, "\x1b]1337;SetUserVar=agent_jump=%s\x07", val)
-		f.Close()
+		if closeErr := f.Close(); err == nil {
+			err = closeErr
+		}
 		if err != nil {
 			return err
 		}

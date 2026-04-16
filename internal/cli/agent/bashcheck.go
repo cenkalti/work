@@ -119,7 +119,7 @@ func classifyCommand(apiKey, command string) (string, string, error) {
 	if err != nil {
 		return "", "", fmt.Errorf("API call: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
@@ -165,7 +165,7 @@ func loadEnvValue(key string) string {
 	if err != nil {
 		return ""
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())

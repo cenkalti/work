@@ -83,7 +83,9 @@ func TestRunTree_CircularDependency(t *testing.T) {
 	dir := writeTasks(t, tasks)
 
 	out := captureStdout(t, func() {
-		runTree(dir, "")
+		if err := runTree(dir, ""); err != nil {
+			t.Fatal(err)
+		}
 	})
 
 	if !strings.Contains(out, "circular") {
@@ -98,7 +100,9 @@ func TestRunTree_CompletedAnnotation(t *testing.T) {
 	dir := writeTasks(t, tasks)
 
 	out := captureStdout(t, func() {
-		runTree(dir, "")
+		if err := runTree(dir, ""); err != nil {
+			t.Fatal(err)
+		}
 	})
 
 	if !strings.Contains(out, "completed") {
