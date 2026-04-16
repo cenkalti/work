@@ -16,14 +16,18 @@ func lsCmd() *cobra.Command {
 		Short: "List worktrees",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			loc := detectLocation(cmd)
+			// Outside any git repo: fall back to enumerating ~/projects/*.
 			worktrees, err := git.ListWorktrees(loc.RootRepo)
 			if err != nil {
 				return listAllProjects()
 			}
 			// EvalSymlinks to match git's resolved paths (e.g. /tmp -> /private/tmp on macOS).
+			// Failure here means the repo has no .work/tree/ yet — it's a git repo but
+			// not adopted by work. Stay scoped to this repo (empty output) rather than
+			// spilling into other projects' worktrees.
 			wtRoot, err := filepath.EvalSymlinks(loc.WorktreeRoot())
 			if err != nil {
-				return nil // .work/tree/ doesn't exist yet; no worktrees
+				return nil
 			}
 			prefix := wtRoot
 			if !strings.HasSuffix(prefix, string(filepath.Separator)) {
