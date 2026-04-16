@@ -15,6 +15,7 @@ func Root() *cobra.Command {
 		hookCmd(),
 		lsCmd(),
 		inboxCmd(),
+		jumpCmd(),
 	)
 	cmd.CompletionOptions.HiddenDefaultCmd = true
 	return cmd

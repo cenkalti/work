@@ -58,7 +58,7 @@ func IsSessionRunning(sessionID string) bool {
 			continue
 		}
 		for i := 1; i < len(fields)-1; i++ {
-			if fields[i] == "--resume" && strings.EqualFold(fields[i+1], sessionID) {
+			if (fields[i] == "--resume" || fields[i] == "--session-id") && strings.EqualFold(fields[i+1], sessionID) {
 				return true
 			}
 		}
@@ -79,7 +79,7 @@ func RunningSessionIDs() map[string]struct{} {
 			continue
 		}
 		for i := 1; i < len(fields)-1; i++ {
-			if fields[i] == "--resume" {
+			if fields[i] == "--resume" || fields[i] == "--session-id" {
 				ids[strings.ToLower(fields[i+1])] = struct{}{}
 				break
 			}
