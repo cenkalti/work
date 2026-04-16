@@ -15,7 +15,10 @@ func lsCmd() *cobra.Command {
 		Use:   "ls",
 		Short: "List worktrees",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			loc := detectLocation(cmd)
+			loc, err := detectLocation(cmd)
+			if err != nil {
+				return err
+			}
 			// Outside any git repo: fall back to enumerating ~/projects/*.
 			worktrees, err := git.ListWorktrees(loc.RootRepo)
 			if err != nil {

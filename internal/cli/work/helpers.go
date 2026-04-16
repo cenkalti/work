@@ -2,8 +2,6 @@ package work
 
 import (
 	"context"
-	"fmt"
-	"os"
 
 	"github.com/cenkalti/work/internal/location"
 	"github.com/spf13/cobra"
@@ -20,15 +18,14 @@ func persistWorkContext(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func detectLocation(cmd *cobra.Command) *location.Location {
+func detectLocation(cmd *cobra.Command) (*location.Location, error) {
 	if wc, ok := cmd.Context().Value(workContextKey{}).(*location.Location); ok {
-		return wc
+		return wc, nil
 	}
 	wc, err := location.Detect()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
+		return nil, err
 	}
 	cmd.SetContext(context.WithValue(cmd.Context(), workContextKey{}, wc))
-	return wc
+	return wc, nil
 }

@@ -18,7 +18,10 @@ func cdCmd() *cobra.Command {
 		Args:              cobra.MaximumNArgs(1),
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			loc := detectLocation(cmd)
+			loc, err := detectLocation(cmd)
+			if err != nil {
+				return err
+			}
 
 			if len(args) == 0 {
 				fmt.Print(loc.RootRepo)
@@ -39,7 +42,10 @@ func worktreeCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	loc := detectLocation(cmd)
+	loc, err := detectLocation(cmd)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
 	worktrees, err := git.ListWorktrees(loc.RootRepo)
 	if err != nil {
 		names, err := allProjectWorktrees()

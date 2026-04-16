@@ -19,7 +19,10 @@ Prints the worktree path on success.`,
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: worktreeCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			loc := detectLocation(cmd)
+			loc, err := detectLocation(cmd)
+			if err != nil {
+				return err
+			}
 			wtPath, err := session.Create(loc, args[0])
 			if err != nil {
 				return err

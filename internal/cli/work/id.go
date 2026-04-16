@@ -11,7 +11,10 @@ func idCmd() *cobra.Command {
 		Use:   "id",
 		Short: "Print the current task ID",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			loc := detectLocation(cmd)
+			loc, err := detectLocation(cmd)
+			if err != nil {
+				return err
+			}
 			if loc.IsRoot() {
 				fmt.Println(".")
 				return nil

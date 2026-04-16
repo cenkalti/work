@@ -26,7 +26,10 @@ Use "." to refer to the root repo (no task).`,
 		Args:              cobra.ExactArgs(2),
 		ValidArgsFunction: mvCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			loc := detectLocation(cmd)
+			loc, err := detectLocation(cmd)
+			if err != nil {
+				return err
+			}
 			if !loc.IsRoot() {
 				return fmt.Errorf("must be run from the repo root")
 			}
@@ -100,7 +103,10 @@ func mvCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]s
 	if len(args) > 1 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	loc := detectLocation(cmd)
+	loc, err := detectLocation(cmd)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
 	worktrees, err := git.ListWorktrees(loc.RootRepo)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
