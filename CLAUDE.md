@@ -26,6 +26,7 @@ work cd [name]               # change directory to worktree (requires shell inte
 ### Agent Commands (`agent` binary)
 
 ```bash
+agent setup                  # set up Claude Code hooks, MCP servers, and slash commands
 agent run                    # start or resume a claude session in the current worktree
 agent ls                     # list agents across all projects (--running, --active)
 ```
@@ -143,8 +144,8 @@ Work is a multi-task orchestrator for Claude Code. It decomposes plans into task
 
 ### Key packages
 
-- **`internal/cli/work/`** — Cobra commands for the `work` binary. Worktree management and context hook.
-- **`internal/cli/agent/`** — Cobra commands for the `agent` binary. Session lifecycle (run, ls) and Claude Code hooks.
+- **`internal/cli/work/`** — Cobra commands for the `work` binary. Worktree management.
+- **`internal/cli/agent/`** — Cobra commands for the `agent` binary. Setup, session lifecycle (run, ls), and Claude Code hooks.
 - **`internal/cli/task/`** — Cobra commands for the `task` binary. Task listing, show, tree, set-status, MCP server.
 - **`internal/location/`** — Detects current working context from CWD and git branch. `Branch` is the full dot-separated path; empty at the root repo.
 - **`internal/paths/`** — Path construction helpers. `ParentBranch`/`BranchID` split dot-notation branches.
