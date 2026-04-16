@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/cenkalti/work/internal/git"
+	"github.com/cenkalti/work/internal/location"
 	"github.com/spf13/cobra"
 )
 
@@ -24,11 +25,10 @@ func cdCmd() *cobra.Command {
 				return nil
 			}
 
-			wtPath := loc.WorktreePath(args[0])
-			if _, err := os.Stat(wtPath); err != nil {
-				return fmt.Errorf("worktree not found: %s", wtPath)
+			wtPath, err := resolveWorktreePath(loc, args[0])
+			if err != nil {
+				return err
 			}
-
 			fmt.Print(wtPath)
 			return nil
 		},
@@ -42,7 +42,11 @@ func worktreeCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 	loc := detectLocation(cmd)
 	worktrees, err := git.ListWorktrees(loc.RootRepo)
 	if err != nil {
-		return nil, cobra.ShellCompDirectiveError
+		names, err := allProjectWorktrees()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+		return names, cobra.ShellCompDirectiveNoFileComp
 	}
 	wtRoot, err := filepath.EvalSymlinks(loc.WorktreeRoot())
 	if err != nil {
@@ -59,4 +63,23 @@ func worktreeCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 		}
 	}
 	return names, cobra.ShellCompDirectiveNoFileComp
+}
+
+func resolveWorktreePath(loc *location.Location, name string) (string, error) {
+	wtPath := loc.WorktreePath(name)
+	if _, err := os.Stat(wtPath); err == nil {
+		return wtPath, nil
+	}
+	project, branch, ok := strings.Cut(name, "/")
+	if ok {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		wtPath = filepath.Join(home, "projects", project, ".work", "tree", branch)
+		if _, err := os.Stat(wtPath); err == nil {
+			return wtPath, nil
+		}
+	}
+	return "", fmt.Errorf("worktree not found: %s", name)
 }
