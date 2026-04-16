@@ -23,7 +23,8 @@ work mv foo .              # move task back to root workspace
 
 Must be run from the repo root. Names are absolute (dot-separated branch paths).
 Use "." to refer to the root repo (no task).`,
-		Args: cobra.ExactArgs(2),
+		Args:              cobra.ExactArgs(2),
+		ValidArgsFunction: mvCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			loc := detectLocation(cmd)
 			if !loc.IsRoot() {
@@ -93,6 +94,32 @@ Use "." to refer to the root repo (no task).`,
 			return nil
 		},
 	}
+}
+
+func mvCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 1 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	loc := detectLocation(cmd)
+	worktrees, err := git.ListWorktrees(loc.RootRepo)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	wtRoot, err := filepath.EvalSymlinks(loc.WorktreeRoot())
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	prefix := wtRoot
+	if !strings.HasSuffix(prefix, string(filepath.Separator)) {
+		prefix += string(filepath.Separator)
+	}
+	names := []string{"."}
+	for _, path := range worktrees {
+		if name, ok := strings.CutPrefix(path, prefix); ok {
+			names = append(names, name)
+		}
+	}
+	return names, cobra.ShellCompDirectiveNoFileComp
 }
 
 // validateMove checks preconditions before performing any move operation.
