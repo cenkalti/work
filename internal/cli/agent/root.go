@@ -24,6 +24,7 @@ func Root() *cobra.Command {
 	)
 
 	cmd.AddCommand(
+		setupCmd(),
 		runCmd(),
 		hook,
 		lsCmd(),
