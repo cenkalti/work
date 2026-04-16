@@ -361,8 +361,12 @@ func moveToRoot(root, src string) error {
 
 	// Clean up worktree and branch if they exist.
 	wtPath := paths.Worktree(root, src)
-	_ = git.RemoveWorktreeIfExists(root, wtPath)
-	_ = git.DeleteBranchIfExists(root, src)
+	if err := git.RemoveWorktreeIfExists(root, wtPath); err != nil {
+		return fmt.Errorf("removing worktree: %w", err)
+	}
+	if err := git.DeleteBranchIfExists(root, src); err != nil {
+		return fmt.Errorf("deleting branch: %w", err)
+	}
 
 	fmt.Printf("Moved %s → root workspace\n", src)
 	return nil
