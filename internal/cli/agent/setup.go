@@ -250,7 +250,9 @@ func setupCommands() error {
 				continue
 			}
 		}
-		_ = os.Remove(dst)
+		if err := os.Remove(dst); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("removing %s: %w", dst, err)
+		}
 		if err := os.Symlink(src, dst); err != nil {
 			return fmt.Errorf("symlinking %s: %w", e.Name(), err)
 		}
