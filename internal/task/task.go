@@ -12,6 +12,14 @@ import (
 
 var validID = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
+// ValidateID returns an error if id is not a valid kebab-case task ID.
+func ValidateID(id string) error {
+	if !validID.MatchString(id) {
+		return fmt.Errorf("invalid task ID %q: must be kebab-case (lowercase alphanumeric and hyphens)", id)
+	}
+	return nil
+}
+
 const (
 	StatusPending   = "pending"
 	StatusActive    = "active"
@@ -109,8 +117,8 @@ func Load(dir, id string) (*Task, error) {
 }
 
 func (t *Task) WriteToFile(dir string) error {
-	if !validID.MatchString(t.ID) {
-		return fmt.Errorf("invalid task ID %q: must be kebab-case (lowercase alphanumeric and hyphens)", t.ID)
+	if err := ValidateID(t.ID); err != nil {
+		return err
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err

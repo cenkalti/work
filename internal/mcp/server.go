@@ -54,6 +54,9 @@ func createTaskTool(tasksDir string) (mcp.Tool, server.ToolHandlerFunc) {
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
+		if err := task.ValidateID(id); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		summary, err := req.RequireString("task")
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
