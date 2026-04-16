@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"os/exec"
 	"syscall"
@@ -22,6 +24,9 @@ func runCmd() *cobra.Command {
 			existing, err := agent.Read(".")
 			if err == nil {
 				return syscall.Exec(claudeBin, []string{"claude", "--resume", existing.ID}, os.Environ())
+			}
+			if !errors.Is(err, fs.ErrNotExist) {
+				return err
 			}
 			id := uuid.New().String()
 			if err := agent.Write(".", &agent.State{ID: id, Status: agent.StatusRunning}); err != nil {
