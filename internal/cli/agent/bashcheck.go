@@ -11,8 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/spf13/cobra"
 )
 
 const bashClassifyPrompt = `Classify this bash command to decide whether it needs user approval. Return permissionDecision 'allow' or 'ask' based on these rules, evaluated in order:
@@ -39,17 +37,6 @@ When in doubt, return 'ask'.
 
 Use the classify_command tool to return your decision.`
 
-func bashCheckCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:    "bash-check",
-		Short:  "Classify a bash command for the PreToolUse hook",
-		Hidden: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runBashCheck(os.Stdin, os.Stdout)
-		},
-	}
-}
-
 type hookInput struct {
 	ToolName  string `json:"tool_name"`
 	ToolInput struct {
@@ -65,18 +52,7 @@ type hookOutput struct {
 	} `json:"hookSpecificOutput"`
 }
 
-func runBashCheck(stdin io.Reader, stdout io.Writer) error {
-	input, err := io.ReadAll(stdin)
-	if err != nil {
-		return writeDecision(stdout, "ask", "failed to read stdin: "+err.Error())
-	}
-
-	var hook hookInput
-	if err := json.Unmarshal(input, &hook); err != nil {
-		return writeDecision(stdout, "ask", "failed to parse hook input: "+err.Error())
-	}
-
-	command := hook.ToolInput.Command
+func runBashCheck(command string, stdout io.Writer) error {
 	if command == "" {
 		return writeDecision(stdout, "ask", "no command found in hook input")
 	}

@@ -6,45 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cenkalti/work/internal/location"
 	"github.com/cenkalti/work/internal/paths"
 	"github.com/cenkalti/work/internal/task"
-	"github.com/spf13/cobra"
 )
-
-func contextCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:    "context",
-		Short:  "Print task context for the current worktree",
-		Hidden: true,
-		Long: `Prints task context to stdout for injection into Claude Code's conversation.
-
-Install in ~/.claude/settings.json to automatically inject context at session start:
-
-  {
-    "hooks": {
-      "SessionStart": [
-        {
-          "matcher": "",
-          "hooks": [{"type": "command", "command": "agent hook context"}]
-        }
-      ]
-    }
-  }
-
-Exits silently if not inside a work-managed worktree.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			loc, err := location.Detect()
-			if err != nil {
-				return err
-			}
-			if loc.IsRoot() || !isWorkManaged(loc.RootRepo) {
-				return nil
-			}
-			return printTaskContext(loc.RootRepo, loc.Branch)
-		},
-	}
-}
 
 // isWorkManaged reports whether the root repo has a .work/ directory.
 func isWorkManaged(rootRepo string) bool {

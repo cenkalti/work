@@ -28,37 +28,32 @@ type hookGroup struct {
 var desiredHooks = map[string][]hookGroup{
 	"SessionStart": {
 		{Matcher: "", Hooks: []hookEntry{
-			{Type: "command", Command: "agent hook start"},
-			{Type: "command", Command: "agent hook context"},
+			{Type: "command", Command: "agent hook session-start"},
 		}},
 	},
 	"SessionEnd": {
 		{Matcher: "", Hooks: []hookEntry{
-			{Type: "command", Command: "agent hook end"},
+			{Type: "command", Command: "agent hook session-end"},
 		}},
 	},
 	"PreToolUse": {
 		{Matcher: "", Hooks: []hookEntry{
-			{Type: "command", Command: "agent hook status running"},
-		}},
-		{Matcher: "Bash", Hooks: []hookEntry{
-			{Type: "command", Command: "agent hook bash-check"},
+			{Type: "command", Command: "agent hook pre-tool-use"},
 		}},
 	},
 	"UserPromptSubmit": {
 		{Matcher: "", Hooks: []hookEntry{
-			{Type: "command", Command: "agent hook status running"},
+			{Type: "command", Command: "agent hook user-prompt-submit"},
 		}},
 	},
 	"Stop": {
 		{Matcher: "", Hooks: []hookEntry{
-			{Type: "command", Command: "agent hook status idle"},
+			{Type: "command", Command: "agent hook stop"},
 		}},
 	},
 	"Notification": {
 		{Matcher: "", Hooks: []hookEntry{
-			{Type: "command", Command: "agent hook status idle"},
-			{Type: "command", Command: "agent hook notify"},
+			{Type: "command", Command: "agent hook notification"},
 		}},
 	},
 }
@@ -122,16 +117,40 @@ func setupHooks() error {
 		hooks = make(map[string]any)
 	}
 
-	changed := false
-	for event, groups := range desiredHooks {
-		for _, desired := range groups {
-			if ensureHookGroup(hooks, event, desired) {
-				changed = true
+	before, _ := json.Marshal(hooks)
+
+	// Strip all existing "agent hook *" entries from every event/matcher group.
+	// `agent setup` owns this namespace; non-agent entries are preserved.
+	for event, raw := range hooks {
+		groups := parseHookGroups(raw)
+		var kept []hookGroup
+		for _, g := range groups {
+			var entries []hookEntry
+			for _, h := range g.Hooks {
+				if !strings.HasPrefix(h.Command, "agent hook ") {
+					entries = append(entries, h)
+				}
 			}
+			if len(entries) > 0 {
+				kept = append(kept, hookGroup{Matcher: g.Matcher, Hooks: entries})
+			}
+		}
+		if len(kept) == 0 {
+			delete(hooks, event)
+		} else {
+			hooks[event] = kept
 		}
 	}
 
-	if !changed {
+	// Add desired hooks.
+	for event, groups := range desiredHooks {
+		for _, desired := range groups {
+			addHookGroup(hooks, event, desired)
+		}
+	}
+
+	after, _ := json.Marshal(hooks)
+	if string(before) == string(after) {
 		fmt.Println("hooks: up to date")
 		return nil
 	}
@@ -149,53 +168,27 @@ func setupHooks() error {
 	return nil
 }
 
-// ensureHookGroup ensures a hook group with the given matcher exists in the event
-// and contains all desired hook entries. Returns true if anything was added.
-func ensureHookGroup(hooks map[string]any, event string, desired hookGroup) bool {
-	// Parse existing groups for this event.
+func parseHookGroups(raw any) []hookGroup {
 	var groups []hookGroup
-	if raw, ok := hooks[event]; ok {
-		if data, err := json.Marshal(raw); err == nil {
-			_ = json.Unmarshal(data, &groups)
-		}
+	if data, err := json.Marshal(raw); err == nil {
+		_ = json.Unmarshal(data, &groups)
 	}
+	return groups
+}
 
-	// Find existing group with matching matcher.
-	idx := -1
+// addHookGroup appends desired entries to the matching event+matcher group,
+// creating the group if it doesn't exist.
+func addHookGroup(hooks map[string]any, event string, desired hookGroup) {
+	groups := parseHookGroups(hooks[event])
 	for i, g := range groups {
 		if g.Matcher == desired.Matcher {
-			idx = i
-			break
+			groups[i].Hooks = append(groups[i].Hooks, desired.Hooks...)
+			hooks[event] = groups
+			return
 		}
 	}
-
-	if idx == -1 {
-		// No group with this matcher — add the whole thing.
-		groups = append(groups, desired)
-		hooks[event] = groups
-		return true
-	}
-
-	// Group exists — ensure each desired hook entry is present.
-	changed := false
-	for _, dh := range desired.Hooks {
-		found := false
-		for _, eh := range groups[idx].Hooks {
-			if eh.Command == dh.Command {
-				found = true
-				break
-			}
-		}
-		if !found {
-			groups[idx].Hooks = append(groups[idx].Hooks, dh)
-			changed = true
-		}
-	}
-
-	if changed {
-		hooks[event] = groups
-	}
-	return changed
+	groups = append(groups, desired)
+	hooks[event] = groups
 }
 
 func setupMCPs() error {

@@ -16,12 +16,12 @@ func Root() *cobra.Command {
 		Hidden: true,
 	}
 	hook.AddCommand(
-		contextCmd(),
-		startCmd(),
-		endCmd(),
-		statusCmd(),
-		bashCheckCmd(),
-		notifyCmd(),
+		sessionStartCmd(),
+		sessionEndCmd(),
+		preToolUseCmd(),
+		userPromptSubmitCmd(),
+		stopCmd(),
+		notificationCmd(),
 	)
 
 	cmd.AddCommand(
