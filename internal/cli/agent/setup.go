@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cenkalti/work/commands"
 	"github.com/spf13/cobra"
 )
 
@@ -213,15 +215,9 @@ func setupCommands() error {
 		return err
 	}
 
-	// setup must be run from the project root containing commands/.
-	cwd, err := os.Getwd()
+	entries, err := commands.FS.ReadDir(".")
 	if err != nil {
-		return err
-	}
-	srcDir := filepath.Join(cwd, "commands")
-	entries, err := os.ReadDir(srcDir)
-	if err != nil {
-		return fmt.Errorf("commands/ not found in current directory")
+		return fmt.Errorf("reading embedded commands: %w", err)
 	}
 
 	changed := false
@@ -229,20 +225,20 @@ func setupCommands() error {
 		if !e.Type().IsRegular() || filepath.Ext(e.Name()) != ".md" {
 			continue
 		}
-		src := filepath.Join(srcDir, e.Name())
+		data, err := commands.FS.ReadFile(e.Name())
+		if err != nil {
+			return fmt.Errorf("reading embedded %s: %w", e.Name(), err)
+		}
 		dst := filepath.Join(commandsDir, e.Name())
 
-		// Check if symlink already points to the right place.
-		if target, err := os.Readlink(dst); err == nil {
-			if target == src {
-				continue
-			}
+		if existing, err := os.ReadFile(dst); err == nil && bytes.Equal(existing, data) {
+			continue
 		}
 		if err := os.Remove(dst); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("removing %s: %w", dst, err)
 		}
-		if err := os.Symlink(src, dst); err != nil {
-			return fmt.Errorf("symlinking %s: %w", e.Name(), err)
+		if err := os.WriteFile(dst, data, 0644); err != nil {
+			return fmt.Errorf("writing %s: %w", dst, err)
 		}
 		changed = true
 	}

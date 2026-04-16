@@ -161,7 +161,7 @@ Work is a multi-task orchestrator for Claude Code. It decomposes plans into task
 
 ## Slash Commands
 
-Slash commands live in `commands/` at the repo root. Symlinked to `~/.claude/commands/` during installation.
+Slash commands live in `commands/` at the repo root. Embedded into the `agent` binary and written to `~/.claude/commands/` by `agent setup`.
 
 1. **`commands/work-plan.md`** — `/work-plan`. Human-driven planning session: goal capture, research, plan, task decomposition via the task MCP tool.
 
