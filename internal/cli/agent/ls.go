@@ -12,15 +12,16 @@ import (
 )
 
 func lsCmd() *cobra.Command {
+	var flagAll bool
+	var flagIdle bool
 	var flagRunning bool
-	var flagActive bool
 
 	cmd := &cobra.Command{
 		Use:   "ls",
 		Short: "List agents across all projects",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var sessionIDs map[string]struct{}
-			if flagRunning || flagActive {
+			if !flagAll {
 				sessionIDs = agent.RunningSessionIDs()
 			}
 
@@ -48,12 +49,15 @@ func lsCmd() *cobra.Command {
 						continue
 					}
 
-					if flagRunning || flagActive {
+					if !flagAll {
 						if _, ok := sessionIDs[strings.ToLower(state.ID)]; !ok {
 							continue
 						}
 					}
-					if flagActive && state.Status != agent.StatusRunning {
+					if flagRunning && state.Status != agent.StatusRunning {
+						continue
+					}
+					if flagIdle && state.Status != agent.StatusIdle {
 						continue
 					}
 
@@ -68,8 +72,9 @@ func lsCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVarP(&flagRunning, "running", "r", false, "only show agents with a running claude session")
-	cmd.Flags().BoolVarP(&flagActive, "active", "a", false, "only show agents actively working (not idle)")
+	cmd.Flags().BoolVarP(&flagAll, "all", "a", false, "list all agents regardless of status")
+	cmd.Flags().BoolVar(&flagRunning, "running", false, "only show agents actively working (not idle)")
+	cmd.Flags().BoolVar(&flagIdle, "idle", false, "only show agents with a running but idle session")
 
 	return cmd
 }

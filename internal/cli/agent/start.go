@@ -25,7 +25,7 @@ func startCmd() *cobra.Command {
 			}
 			return agent.Write(".", &agent.State{
 				ID:     input.SessionID,
-				Status: agent.StatusRunning,
+				Status: agent.StatusIdle,
 			})
 		},
 	}
