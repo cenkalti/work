@@ -67,7 +67,7 @@ All identifiers are plain strings. No UUIDs or auto-generated IDs.
 | Identifier | Format | Example |
 |---|---|---|
 | Task ID | kebab-case slug | `build-login-form` |
-| Task file | `<task-id>.json` | `.work/space/user-auth/tasks/build-login-form.json` |
+| Task file | `<task-id>.yaml` | `.work/space/user-auth/tasks/build-login-form.yaml` |
 | Root task branch | User-provided, no dots | `user-auth` |
 | Child task branch | `<parent-branch>.<task-id>` | `user-auth.build-login-form` |
 | Worktree path | `.work/tree/<branch>/` | `.work/tree/user-auth.build-login-form/` |
@@ -116,7 +116,7 @@ Key points:
 - **Single `.work/` directory** in the root repo. All worktrees symlink to it.
 - Task worktrees are created in the **root repo** (resolved via `git rev-parse --git-common-dir`).
 - `.work/` in all worktrees is a **symlink** back to the root repo's `.work/`, so all agents share the full workspace.
-- Subtasks are stored in the parent's workspace: `.work/space/<parent-branch>/tasks/<id>.json`.
+- Subtasks are stored in the parent's workspace: `.work/space/<parent-branch>/tasks/<id>.yaml`.
 
 ## Directory Structure
 
@@ -126,7 +126,7 @@ Key points:
 │   ├── <branch>/               # task workspace
 │   │   ├── plan.md
 │   │   ├── tasks/
-│   │   │   └── <subtask-id>.json
+│   │   │   └── <subtask-id>.yaml
 │   │   └── (scratch files)
 │   └── <branch>.<subtask-id>/ # subtask workspace
 │       ├── log.md
