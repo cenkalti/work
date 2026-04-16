@@ -54,7 +54,7 @@ func IsSessionRunning(sessionID string) bool {
 	}
 	for line := range strings.SplitSeq(string(out), "\n") {
 		fields := strings.Fields(line)
-		if len(fields) < 3 || fields[0] != "claude" {
+		if len(fields) < 3 || filepath.Base(fields[0]) != "claude" {
 			continue
 		}
 		for i := 1; i < len(fields)-1; i++ {
@@ -75,7 +75,7 @@ func RunningSessionIDs() map[string]struct{} {
 	ids := make(map[string]struct{})
 	for line := range strings.SplitSeq(string(out), "\n") {
 		fields := strings.Fields(line)
-		if len(fields) < 3 || fields[0] != "claude" {
+		if len(fields) < 3 || filepath.Base(fields[0]) != "claude" {
 			continue
 		}
 		for i := 1; i < len(fields)-1; i++ {
