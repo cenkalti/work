@@ -9,29 +9,13 @@ func Root() *cobra.Command {
 		Use:   "agent",
 		Short: "Agent lifecycle and listing",
 	}
-
-	hook := &cobra.Command{
-		Use:    "hook",
-		Short:  "Hook commands for Claude Code integration",
-		Hidden: true,
-	}
-	hook.AddCommand(
-		sessionStartCmd(),
-		sessionEndCmd(),
-		preToolUseCmd(),
-		userPromptSubmitCmd(),
-		stopCmd(),
-		notificationCmd(),
-	)
-
 	cmd.AddCommand(
 		setupCmd(),
 		runCmd(),
-		hook,
+		hookCmd(),
 		lsCmd(),
 		inboxCmd(),
 	)
-
 	cmd.CompletionOptions.HiddenDefaultCmd = true
 	return cmd
 }

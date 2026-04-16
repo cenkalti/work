@@ -25,37 +25,17 @@ type hookGroup struct {
 }
 
 // desired hooks to ensure exist in settings.json
-var desiredHooks = map[string][]hookGroup{
-	"SessionStart": {
-		{Matcher: "", Hooks: []hookEntry{
-			{Type: "command", Command: "agent hook session-start"},
-		}},
-	},
-	"SessionEnd": {
-		{Matcher: "", Hooks: []hookEntry{
-			{Type: "command", Command: "agent hook session-end"},
-		}},
-	},
-	"PreToolUse": {
-		{Matcher: "", Hooks: []hookEntry{
-			{Type: "command", Command: "agent hook pre-tool-use"},
-		}},
-	},
-	"UserPromptSubmit": {
-		{Matcher: "", Hooks: []hookEntry{
-			{Type: "command", Command: "agent hook user-prompt-submit"},
-		}},
-	},
-	"Stop": {
-		{Matcher: "", Hooks: []hookEntry{
-			{Type: "command", Command: "agent hook stop"},
-		}},
-	},
-	"Notification": {
-		{Matcher: "", Hooks: []hookEntry{
-			{Type: "command", Command: "agent hook notification"},
-		}},
-	},
+var hookEvents = []string{
+	"SessionStart",
+	"SessionEnd",
+	"PreToolUse",
+	"UserPromptSubmit",
+	"Stop",
+	"Notification",
+}
+
+func desiredHookGroups() []hookGroup {
+	return []hookGroup{{Matcher: "", Hooks: []hookEntry{{Type: "command", Command: "agent hook"}}}}
 }
 
 // MCP servers to register
@@ -119,7 +99,7 @@ func setupHooks() error {
 
 	before, _ := json.Marshal(hooks)
 
-	// Strip all existing "agent hook *" entries from every event/matcher group.
+	// Strip all existing "agent hook" entries from every event/matcher group.
 	// `agent setup` owns this namespace; non-agent entries are preserved.
 	for event, raw := range hooks {
 		groups := parseHookGroups(raw)
@@ -127,7 +107,7 @@ func setupHooks() error {
 		for _, g := range groups {
 			var entries []hookEntry
 			for _, h := range g.Hooks {
-				if !strings.HasPrefix(h.Command, "agent hook ") {
+				if !isAgentHook(h.Command) {
 					entries = append(entries, h)
 				}
 			}
@@ -143,8 +123,8 @@ func setupHooks() error {
 	}
 
 	// Add desired hooks.
-	for event, groups := range desiredHooks {
-		for _, desired := range groups {
+	for _, event := range hookEvents {
+		for _, desired := range desiredHookGroups() {
 			addHookGroup(hooks, event, desired)
 		}
 	}
@@ -166,6 +146,10 @@ func setupHooks() error {
 	}
 	fmt.Println("hooks: updated")
 	return nil
+}
+
+func isAgentHook(cmd string) bool {
+	return cmd == "agent hook" || strings.HasPrefix(cmd, "agent hook ")
 }
 
 func parseHookGroups(raw any) []hookGroup {

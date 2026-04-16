@@ -14,133 +14,118 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func sessionStartCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:    "session-start",
-		Short:  "Handle SessionStart hook",
-		Hidden: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			input, err := agentpkg.ReadHookInput()
-			if err != nil {
-				return err
-			}
-			existing, err := agentpkg.Read(".")
-			if err == nil && existing.ID != input.SessionID && existing.Status != agentpkg.StatusEnded {
-				if agentpkg.IsSessionRunning(existing.ID) {
-					return fmt.Errorf("another session is already running: %s", existing.ID)
-				}
-			}
-			if err := agentpkg.Write(".", &agentpkg.State{
-				ID:     input.SessionID,
-				Status: agentpkg.StatusIdle,
-			}); err != nil {
-				return err
-			}
-			loc, err := location.Detect()
-			if err != nil {
-				return err
-			}
-			if loc.IsRoot() || !isWorkManaged(loc.RootRepo) {
-				return nil
-			}
-			return printTaskContext(loc.RootRepo, loc.Branch)
-		},
-	}
+type hookPayload struct {
+	HookEventName string `json:"hook_event_name"`
+	SessionID     string `json:"session_id"`
+	ToolName      string `json:"tool_name"`
+	ToolInput     struct {
+		Command string `json:"command"`
+	} `json:"tool_input"`
 }
 
-func sessionEndCmd() *cobra.Command {
+func hookCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:    "session-end",
-		Short:  "Handle SessionEnd hook",
-		Hidden: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if loc, err := location.Detect(); err == nil {
-				_ = inbox.Delete(filepath.Base(loc.RootRepo), loc.Branch)
-			}
-			existing, err := agentpkg.Read(".")
-			if err != nil {
-				return nil
-			}
-			existing.Status = agentpkg.StatusEnded
-			return agentpkg.Write(".", existing)
-		},
-	}
-}
-
-func preToolUseCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:    "pre-tool-use",
-		Short:  "Handle PreToolUse hook",
+		Use:    "hook",
+		Short:  "Dispatch Claude Code hook events (reads event from stdin)",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			data, err := io.ReadAll(os.Stdin)
 			if err != nil {
 				return err
 			}
-			setAgentStatus(agentpkg.StatusRunning)
-			clearInbox()
-
-			var hi hookInput
-			_ = json.Unmarshal(data, &hi)
-			if hi.ToolName == "Bash" {
-				return runBashCheck(hi.ToolInput.Command, os.Stdout)
-			}
-			return nil
-		},
-	}
-}
-
-func userPromptSubmitCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:    "user-prompt-submit",
-		Short:  "Handle UserPromptSubmit hook",
-		Hidden: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			setAgentStatus(agentpkg.StatusRunning)
-			clearInbox()
-			return nil
-		},
-	}
-}
-
-func stopCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:    "stop",
-		Short:  "Handle Stop hook",
-		Hidden: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			setAgentStatus(agentpkg.StatusIdle)
-			return nil
-		},
-	}
-}
-
-func notificationCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:    "notification",
-		Short:  "Handle Notification hook",
-		Hidden: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			input, err := agentpkg.ReadHookInput()
-			if err != nil {
+			var p hookPayload
+			if err := json.Unmarshal(data, &p); err != nil {
 				return err
 			}
-			setAgentStatus(agentpkg.StatusIdle)
-			loc, err := location.Detect()
-			if err != nil {
-				return err
+			switch p.HookEventName {
+			case "SessionStart":
+				return handleSessionStart(&p)
+			case "SessionEnd":
+				return handleSessionEnd()
+			case "PreToolUse":
+				return handlePreToolUse(&p)
+			case "UserPromptSubmit":
+				return handleUserPromptSubmit()
+			case "Stop":
+				return handleStop()
+			case "Notification":
+				return handleNotification(&p)
 			}
-			return inbox.Write(&inbox.Message{
-				Project:   filepath.Base(loc.RootRepo),
-				Branch:    loc.Branch,
-				SessionID: input.SessionID,
-				Timestamp: time.Now(),
-			})
+			return nil
 		},
 	}
 }
 
-// setAgentStatus updates the .agent file status. Silent no-op if no .agent file.
+func handleSessionStart(p *hookPayload) error {
+	if p.SessionID == "" {
+		return fmt.Errorf("missing session_id")
+	}
+	existing, err := agentpkg.Read(".")
+	if err == nil && existing.ID != p.SessionID && existing.Status != agentpkg.StatusEnded {
+		if agentpkg.IsSessionRunning(existing.ID) {
+			return fmt.Errorf("another session is already running: %s", existing.ID)
+		}
+	}
+	if err := agentpkg.Write(".", &agentpkg.State{
+		ID:     p.SessionID,
+		Status: agentpkg.StatusIdle,
+	}); err != nil {
+		return err
+	}
+	loc, err := location.Detect()
+	if err != nil {
+		return err
+	}
+	if loc.IsRoot() || !isWorkManaged(loc.RootRepo) {
+		return nil
+	}
+	return printTaskContext(loc.RootRepo, loc.Branch)
+}
+
+func handleSessionEnd() error {
+	clearInbox()
+	existing, err := agentpkg.Read(".")
+	if err != nil {
+		return nil
+	}
+	existing.Status = agentpkg.StatusEnded
+	return agentpkg.Write(".", existing)
+}
+
+func handlePreToolUse(p *hookPayload) error {
+	setAgentStatus(agentpkg.StatusRunning)
+	clearInbox()
+	if p.ToolName == "Bash" {
+		return runBashCheck(p.ToolInput.Command, os.Stdout)
+	}
+	return nil
+}
+
+func handleUserPromptSubmit() error {
+	setAgentStatus(agentpkg.StatusRunning)
+	clearInbox()
+	return nil
+}
+
+func handleStop() error {
+	setAgentStatus(agentpkg.StatusIdle)
+	return nil
+}
+
+func handleNotification(p *hookPayload) error {
+	setAgentStatus(agentpkg.StatusIdle)
+	loc, err := location.Detect()
+	if err != nil {
+		return err
+	}
+	return inbox.Write(&inbox.Message{
+		Project:   filepath.Base(loc.RootRepo),
+		Branch:    loc.Branch,
+		SessionID: p.SessionID,
+		Timestamp: time.Now(),
+	})
+}
+
 func setAgentStatus(status string) {
 	existing, err := agentpkg.Read(".")
 	if err != nil {
@@ -150,7 +135,6 @@ func setAgentStatus(status string) {
 	_ = agentpkg.Write(".", existing)
 }
 
-// clearInbox removes the current agent's inbox message, if any.
 func clearInbox() {
 	loc, err := location.Detect()
 	if err != nil {

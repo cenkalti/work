@@ -37,13 +37,6 @@ When in doubt, return 'ask'.
 
 Use the classify_command tool to return your decision.`
 
-type hookInput struct {
-	ToolName  string `json:"tool_name"`
-	ToolInput struct {
-		Command string `json:"command"`
-	} `json:"tool_input"`
-}
-
 type hookOutput struct {
 	HookSpecificOutput struct {
 		HookEventName            string `json:"hookEventName"`
