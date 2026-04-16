@@ -33,20 +33,19 @@ func Dir() (string, error) {
 	return filepath.Join(home, ".work", "inbox"), nil
 }
 
-func filePath(project, branch string) (string, error) {
+func filePath(sessionID string) (string, error) {
 	dir, err := Dir()
 	if err != nil {
 		return "", err
 	}
-	leaf := "_.json"
-	if branch != "" {
-		leaf = branch + ".json"
-	}
-	return filepath.Join(dir, project, leaf), nil
+	return filepath.Join(dir, sessionID+".json"), nil
 }
 
 func Write(msg *Message) error {
-	path, err := filePath(msg.Project, msg.Branch)
+	if msg.SessionID == "" {
+		return fmt.Errorf("missing session_id")
+	}
+	path, err := filePath(msg.SessionID)
 	if err != nil {
 		return err
 	}
@@ -65,7 +64,7 @@ func List() ([]*Message, error) {
 	if err != nil {
 		return nil, err
 	}
-	projectDirs, err := os.ReadDir(dir)
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -73,30 +72,20 @@ func List() ([]*Message, error) {
 		return nil, err
 	}
 	var msgs []*Message
-	for _, pd := range projectDirs {
-		if !pd.IsDir() {
+	for _, e := range entries {
+		if e.IsDir() || filepath.Ext(e.Name()) != ".json" {
 			continue
 		}
-		projectDir := filepath.Join(dir, pd.Name())
-		entries, err := os.ReadDir(projectDir)
+		msgPath := filepath.Join(dir, e.Name())
+		data, err := os.ReadFile(msgPath)
 		if err != nil {
-			return nil, fmt.Errorf("reading %s: %w", projectDir, err)
+			return nil, fmt.Errorf("reading %s: %w", msgPath, err)
 		}
-		for _, e := range entries {
-			if filepath.Ext(e.Name()) != ".json" {
-				continue
-			}
-			msgPath := filepath.Join(projectDir, e.Name())
-			data, err := os.ReadFile(msgPath)
-			if err != nil {
-				return nil, fmt.Errorf("reading %s: %w", msgPath, err)
-			}
-			var msg Message
-			if err := json.Unmarshal(data, &msg); err != nil {
-				return nil, fmt.Errorf("parsing %s: %w", msgPath, err)
-			}
-			msgs = append(msgs, &msg)
+		var msg Message
+		if err := json.Unmarshal(data, &msg); err != nil {
+			return nil, fmt.Errorf("parsing %s: %w", msgPath, err)
 		}
+		msgs = append(msgs, &msg)
 	}
 	sort.Slice(msgs, func(i, j int) bool {
 		return msgs[i].Timestamp.After(msgs[j].Timestamp)
@@ -104,8 +93,8 @@ func List() ([]*Message, error) {
 	return msgs, nil
 }
 
-func Delete(project, branch string) error {
-	path, err := filePath(project, branch)
+func Delete(sessionID string) error {
+	path, err := filePath(sessionID)
 	if err != nil {
 		return err
 	}

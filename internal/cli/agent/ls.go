@@ -11,72 +11,88 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type listOpts struct {
+	all     bool
+	running bool
+	idle    bool
+}
+
 func lsCmd() *cobra.Command {
-	var flagAll bool
-	var flagIdle bool
-	var flagRunning bool
+	var opts listOpts
 
 	cmd := &cobra.Command{
 		Use:   "ls",
 		Short: "List agents across all projects",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var sessionIDs map[string]struct{}
-			if !flagAll {
-				sessionIDs = agent.RunningSessionIDs()
-			}
-
-			home, err := os.UserHomeDir()
+			names, err := listAgents(opts)
 			if err != nil {
 				return err
 			}
-			projectsDir := filepath.Join(home, "projects")
-			entries, err := os.ReadDir(projectsDir)
-			if err != nil {
-				return err
-			}
-			for _, entry := range entries {
-				if !entry.IsDir() {
-					continue
-				}
-				projectPath := filepath.Join(projectsDir, entry.Name())
-				worktrees, err := git.ListWorktrees(projectPath)
-				if err != nil {
-					continue
-				}
-				for _, wt := range worktrees {
-					state, err := agent.Read(wt)
-					if err != nil {
-						continue
-					}
-
-					if !flagAll {
-						if _, ok := sessionIDs[strings.ToLower(state.ID)]; !ok {
-							continue
-						}
-					}
-					if flagRunning && state.Status != agent.StatusRunning {
-						continue
-					}
-					if flagIdle && state.Status != agent.StatusIdle {
-						continue
-					}
-
-					name := nameForWorktree(entry.Name(), projectPath, wt)
-					if name == "" {
-						continue
-					}
-					fmt.Println(name)
-				}
+			for _, name := range names {
+				fmt.Println(name)
 			}
 			return nil
 		},
 	}
 
-	cmd.Flags().BoolVarP(&flagAll, "all", "a", false, "list all agents regardless of status")
-	cmd.Flags().BoolVar(&flagRunning, "running", false, "only show agents actively working (not idle)")
-	cmd.Flags().BoolVar(&flagIdle, "idle", false, "only show agents with a running but idle session")
+	cmd.Flags().BoolVarP(&opts.all, "all", "a", false, "list all agents regardless of status")
+	cmd.Flags().BoolVar(&opts.running, "running", false, "only show agents actively working (not idle)")
+	cmd.Flags().BoolVar(&opts.idle, "idle", false, "only show agents with a running but idle session")
 
 	return cmd
+}
+
+func listAgents(opts listOpts) ([]string, error) {
+	var sessionIDs map[string]struct{}
+	if !opts.all {
+		sessionIDs = agent.RunningSessionIDs()
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	projectsDir := filepath.Join(home, "projects")
+	entries, err := os.ReadDir(projectsDir)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		projectPath := filepath.Join(projectsDir, entry.Name())
+		worktrees, err := git.ListWorktrees(projectPath)
+		if err != nil {
+			continue
+		}
+		for _, wt := range worktrees {
+			state, err := agent.Read(wt)
+			if err != nil {
+				continue
+			}
+
+			if !opts.all {
+				if _, ok := sessionIDs[strings.ToLower(state.ID)]; !ok {
+					continue
+				}
+			}
+			if opts.running && state.Status != agent.StatusRunning {
+				continue
+			}
+			if opts.idle && state.Status != agent.StatusIdle {
+				continue
+			}
+
+			name := nameForWorktree(entry.Name(), projectPath, wt)
+			if name == "" {
+				continue
+			}
+			names = append(names, name)
+		}
+	}
+	return names, nil
 }
 
 func nameForWorktree(project, projectPath, wt string) string {

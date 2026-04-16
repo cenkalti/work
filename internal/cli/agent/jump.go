@@ -9,43 +9,36 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cenkalti/work/internal/agent"
-	"github.com/cenkalti/work/internal/git"
 	"github.com/spf13/cobra"
 )
 
 func jumpCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "jump <id>",
-		Short: "Activate the WezTerm tab for an agent",
+	return &cobra.Command{
+		Use:   "jump <project>[/<branch>]",
+		Short: "Activate the WezTerm pane running claude for the given agent",
 		Args:  cobra.ExactArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) > 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
-			return agentNames(), cobra.ShellCompDirectiveNoFileComp
+			names, _ := listAgents(listOpts{})
+			return names, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id := args[0]
-			path, err := resolveAgentPath(id)
+			path, err := resolveAgentPath(args[0])
 			if err != nil {
 				return err
 			}
-			var sessionID string
-			if state, err := agent.Read(path); err == nil {
-				sessionID = state.ID
-			}
-			tabID, paneID, tty, err := findWezTermPane(path, sessionID)
+			tabID, paneID, tty, err := findClaudePane(path)
 			if err != nil {
 				return err
 			}
-			if tabID < 0 {
-				return fmt.Errorf("no wezterm tab for %s (%s)", id, path)
+			if paneID < 0 {
+				return fmt.Errorf("no claude pane found for %s", args[0])
 			}
 			return activateWezTerm(tabID, paneID, tty)
 		},
 	}
-	return cmd
 }
 
 func resolveAgentPath(id string) (string, error) {
@@ -55,10 +48,8 @@ func resolveAgentPath(id string) (string, error) {
 	}
 	project, branch, _ := strings.Cut(id, "/")
 	projectPath := filepath.Join(home, "projects", project)
-	var path string
-	if branch == "" {
-		path = projectPath
-	} else {
+	path := projectPath
+	if branch != "" {
 		path = filepath.Join(projectPath, ".work", "tree", branch)
 	}
 	resolved, err := filepath.EvalSymlinks(path)
@@ -69,15 +60,26 @@ func resolveAgentPath(id string) (string, error) {
 }
 
 type wezPane struct {
-	TabID    int    `json:"tab_id"`
-	PaneID   int    `json:"pane_id"`
-	CWD      string `json:"cwd"`
-	TTYName  string `json:"tty_name"`
-	IsActive bool   `json:"is_active"`
+	TabID   int    `json:"tab_id"`
+	PaneID  int    `json:"pane_id"`
+	CWD     string `json:"cwd"`
+	TTYName string `json:"tty_name"`
 }
 
-func findWezTermPane(path, sessionID string) (int, int, string, error) {
-	out, err := exec.Command("wezterm", "cli", "list", "--format", "json").Output()
+func wezTermPath() string {
+	if p, err := exec.LookPath("wezterm"); err == nil {
+		return p
+	}
+	for _, p := range []string{"/opt/homebrew/bin/wezterm", "/usr/local/bin/wezterm", "/Applications/WezTerm.app/Contents/MacOS/wezterm"} {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return "wezterm"
+}
+
+func findClaudePane(path string) (int, int, string, error) {
+	out, err := exec.Command(wezTermPath(), "cli", "list", "--format", "json").Output()
 	if err != nil {
 		return -1, -1, "", fmt.Errorf("wezterm cli list: %w", err)
 	}
@@ -85,65 +87,48 @@ func findWezTermPane(path, sessionID string) (int, int, string, error) {
 	if err := json.Unmarshal(out, &panes); err != nil {
 		return -1, -1, "", fmt.Errorf("parsing wezterm output: %w", err)
 	}
-	if sessionID != "" {
-		if tty := claudeTTY(sessionID); tty != "" {
-			for _, p := range panes {
-				if p.TTYName == tty {
-					return p.TabID, p.PaneID, p.TTYName, nil
-				}
-			}
-		}
-	}
-	target := path + string(filepath.Separator)
-	tabID, paneID := -1, -1
-	var tty string
+	claudeTTYs := runningClaudeTTYs()
 	for _, p := range panes {
+		if _, ok := claudeTTYs[p.TTYName]; !ok {
+			continue
+		}
 		cwd := strings.TrimPrefix(p.CWD, "file://")
 		resolved, err := filepath.EvalSymlinks(cwd)
 		if err != nil {
 			resolved = cwd
 		}
-		if resolved != path && !strings.HasPrefix(resolved+string(filepath.Separator), target) {
-			continue
-		}
-		if p.IsActive || tabID < 0 {
-			tabID, paneID, tty = p.TabID, p.PaneID, p.TTYName
-			if p.IsActive {
-				break
-			}
+		if resolved == path {
+			return p.TabID, p.PaneID, p.TTYName, nil
 		}
 	}
-	return tabID, paneID, tty, nil
+	return -1, -1, "", nil
 }
 
-func claudeTTY(sessionID string) string {
+func runningClaudeTTYs() map[string]struct{} {
+	ttys := map[string]struct{}{}
 	out, err := exec.Command("ps", "-eo", "tty,args").Output()
 	if err != nil {
-		return ""
+		return ttys
 	}
 	for line := range strings.SplitSeq(string(out), "\n") {
 		fields := strings.Fields(line)
-		if len(fields) < 4 {
+		if len(fields) < 2 {
 			continue
 		}
 		tty := fields[0]
 		if tty == "??" || fields[1] != "claude" {
 			continue
 		}
-		for i := 2; i < len(fields)-1; i++ {
-			if (fields[i] == "--resume" || fields[i] == "--session-id") && strings.EqualFold(fields[i+1], sessionID) {
-				return "/dev/" + tty
-			}
-		}
+		ttys["/dev/"+tty] = struct{}{}
 	}
-	return ""
+	return ttys
 }
 
 func activateWezTerm(tabID, paneID int, tty string) error {
-	if err := exec.Command("wezterm", "cli", "activate-tab", "--tab-id", fmt.Sprint(tabID)).Run(); err != nil {
+	if err := exec.Command(wezTermPath(), "cli", "activate-tab", "--tab-id", fmt.Sprint(tabID)).Run(); err != nil {
 		return fmt.Errorf("activate-tab: %w", err)
 	}
-	if err := exec.Command("wezterm", "cli", "activate-pane", "--pane-id", fmt.Sprint(paneID)).Run(); err != nil {
+	if err := exec.Command(wezTermPath(), "cli", "activate-pane", "--pane-id", fmt.Sprint(paneID)).Run(); err != nil {
 		return fmt.Errorf("activate-pane: %w", err)
 	}
 	if tty != "" {
@@ -161,41 +146,7 @@ func activateWezTerm(tabID, paneID int, tty string) error {
 		}
 	}
 	if self := os.Getenv("WEZTERM_PANE"); self != "" && self != fmt.Sprint(paneID) {
-		_ = exec.Command("wezterm", "cli", "kill-pane", "--pane-id", self).Run()
+		_ = exec.Command(wezTermPath(), "cli", "kill-pane", "--pane-id", self).Run()
 	}
 	return nil
-}
-
-func agentNames() []string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil
-	}
-	projectsDir := filepath.Join(home, "projects")
-	entries, err := os.ReadDir(projectsDir)
-	if err != nil {
-		return nil
-	}
-	var names []string
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		projectPath := filepath.Join(projectsDir, entry.Name())
-		worktrees, err := git.ListWorktrees(projectPath)
-		if err != nil {
-			continue
-		}
-		for _, wt := range worktrees {
-			if _, err := agent.Read(wt); err != nil {
-				continue
-			}
-			name := nameForWorktree(entry.Name(), projectPath, wt)
-			if name == "" {
-				continue
-			}
-			names = append(names, name)
-		}
-	}
-	return names
 }

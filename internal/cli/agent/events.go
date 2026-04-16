@@ -134,9 +134,9 @@ func setAgentStatus(status string) {
 }
 
 func clearInbox() {
-	loc, err := location.Detect()
+	state, err := agentpkg.Read(".")
 	if err != nil {
 		return
 	}
-	_ = inbox.Delete(filepath.Base(loc.RootRepo), loc.Branch)
+	_ = inbox.Delete(state.ID)
 }
