@@ -49,7 +49,7 @@ func Detect() (*Location, error) {
 
 	top, err := worktreeTopLevel(cwd)
 	if err != nil {
-		return nil, err
+		return loc, nil
 	}
 	if top == rootRepo {
 		return loc, nil
