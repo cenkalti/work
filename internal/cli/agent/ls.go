@@ -17,11 +17,11 @@ type listOpts struct {
 	idle    bool
 }
 
-func lsCmd() *cobra.Command {
+func psCmd() *cobra.Command {
 	var opts listOpts
 
 	cmd := &cobra.Command{
-		Use:   "ls",
+		Use:   "ps",
 		Short: "List agents across all projects",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			names, err := listAgents(opts)

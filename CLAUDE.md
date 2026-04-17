@@ -28,7 +28,7 @@ work cd [name]               # change directory to worktree (requires shell inte
 ```bash
 agent setup                  # set up Claude Code hooks, MCP servers, and slash commands
 agent run                    # start or resume a claude session in the current worktree
-agent ls                     # list agents across all projects (--running, --active)
+agent ps                     # list agents across all projects (--running, --active)
 ```
 
 ### Task Commands (separate `task` binary, operates on ./workspace/tasks/)

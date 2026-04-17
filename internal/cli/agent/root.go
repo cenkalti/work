@@ -13,7 +13,7 @@ func Root() *cobra.Command {
 		setupCmd(),
 		runCmd(),
 		hookCmd(),
-		lsCmd(),
+		psCmd(),
 		inboxCmd(),
 		jumpCmd(),
 	)
