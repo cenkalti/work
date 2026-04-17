@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -62,13 +63,25 @@ func printInbox(w io.Writer, hyperlinks bool) error {
 	if err != nil {
 		return err
 	}
-	for _, msg := range msgs {
-		age := time.Since(msg.Timestamp).Truncate(time.Second)
-		line := fmt.Sprintf("%-40s %s ago", msg.Name(), age)
-		if hyperlinks {
-			line = fmt.Sprintf("\x1b]8;;agent-jump://%s\x1b\\%s\x1b]8;;\x1b\\", msg.Name(), line)
+	nameWidth, ageWidth := 0, 0
+	ages := make([]string, len(msgs))
+	for i, msg := range msgs {
+		ages[i] = time.Since(msg.Timestamp).Truncate(time.Second).String()
+		if n := len(msg.Name()); n > nameWidth {
+			nameWidth = n
 		}
-		fmt.Fprintln(w, line)
+		if a := len(ages[i]); a > ageWidth {
+			ageWidth = a
+		}
+	}
+	for i, msg := range msgs {
+		name := msg.Name()
+		display := name
+		if hyperlinks {
+			display = fmt.Sprintf("\x1b]8;;agent-jump://%s\x1b\\%s\x1b]8;;\x1b\\", name, name)
+		}
+		pad := strings.Repeat(" ", nameWidth-len(name))
+		fmt.Fprintf(w, "%s%s  %*s ago\n", display, pad, ageWidth, ages[i])
 	}
 	return nil
 }
