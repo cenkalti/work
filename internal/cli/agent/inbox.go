@@ -47,10 +47,11 @@ func watchInbox(parent context.Context, w io.Writer) error {
 	defer ticker.Stop()
 
 	for {
-		fmt.Fprint(w, "\x1b[H\x1b[2J")
+		fmt.Fprint(w, "\x1b[H")
 		if err := printInbox(w, true); err != nil {
 			return err
 		}
+		fmt.Fprint(w, "\x1b[J")
 		select {
 		case <-ctx.Done():
 			return nil
@@ -92,7 +93,11 @@ func printInbox(w io.Writer, hyperlinks bool) error {
 			display = fmt.Sprintf("\x1b]8;;agent-jump://%s\x1b\\%s\x1b]8;;\x1b\\", name, name)
 		}
 		pad := strings.Repeat(" ", nameWidth-len(name))
-		fmt.Fprintf(w, "%s%s  %*s ago\n", display, pad, ageWidth, ages[i])
+		eol := "\n"
+		if hyperlinks {
+			eol = "\x1b[K\n"
+		}
+		fmt.Fprintf(w, "%s%s  %*s ago%s", display, pad, ageWidth, ages[i], eol)
 	}
 	return nil
 }
