@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cenkalti/work/internal/agent"
 	"github.com/cenkalti/work/internal/inbox"
 	"github.com/spf13/cobra"
 )
@@ -63,6 +64,16 @@ func printInbox(w io.Writer, hyperlinks bool) error {
 	if err != nil {
 		return err
 	}
+	running := agent.RunningSessionIDs()
+	live := msgs[:0]
+	for _, msg := range msgs {
+		if _, ok := running[strings.ToLower(msg.SessionID)]; !ok {
+			_ = inbox.Delete(msg.SessionID)
+			continue
+		}
+		live = append(live, msg)
+	}
+	msgs = live
 	nameWidth, ageWidth := 0, 0
 	ages := make([]string, len(msgs))
 	for i, msg := range msgs {
