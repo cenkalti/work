@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/cenkalti/work/internal/git"
+	"github.com/cenkalti/work/internal/location"
 	"github.com/cenkalti/work/internal/paths"
 	"github.com/spf13/cobra"
 )
@@ -29,6 +31,17 @@ Names are absolute (dot-separated branch paths).`,
 				return err
 			}
 			branch := args[0]
+			if project, sub, ok := strings.Cut(branch, "/"); ok {
+				home, err := os.UserHomeDir()
+				if err != nil {
+					return err
+				}
+				projectPath := filepath.Join(home, "projects", project)
+				if info, err := os.Stat(projectPath); err == nil && info.IsDir() {
+					loc = &location.Location{RootRepo: projectPath}
+					branch = sub
+				}
+			}
 			taskID := paths.BranchID(branch)
 			wtPath := loc.WorktreePath(branch)
 
