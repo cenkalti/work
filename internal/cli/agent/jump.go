@@ -7,7 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -136,7 +138,7 @@ func activateWezTerm(tabID, paneID int, tty string) error {
 		if err != nil {
 			return fmt.Errorf("open %s: %w", tty, err)
 		}
-		val := base64.StdEncoding.EncodeToString([]byte("1"))
+		val := base64.StdEncoding.EncodeToString([]byte(strconv.FormatInt(time.Now().UnixNano(), 10)))
 		_, err = fmt.Fprintf(f, "\x1b]1337;SetUserVar=agent_jump=%s\x07", val)
 		if closeErr := f.Close(); err == nil {
 			err = closeErr
