@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	agentpkg "github.com/cenkalti/work/internal/agent"
@@ -116,9 +117,27 @@ func handleNotification(p *hookPayload) error {
 	if err != nil {
 		return err
 	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	resolved, err := filepath.EvalSymlinks(cwd)
+	if err != nil {
+		resolved = cwd
+	}
+	project := filepath.Base(loc.RootRepo)
+	subpath := ""
+	if resolved != loc.RootRepo {
+		wtRoot := filepath.Join(loc.RootRepo, ".work", "tree")
+		if wtRootResolved, err := filepath.EvalSymlinks(wtRoot); err == nil {
+			if rel, ok := strings.CutPrefix(resolved, wtRootResolved+string(filepath.Separator)); ok {
+				subpath = rel
+			}
+		}
+	}
 	return inbox.Write(&inbox.Message{
-		Project:   filepath.Base(loc.RootRepo),
-		Branch:    loc.Branch,
+		Project:   project,
+		Branch:    subpath,
 		SessionID: p.SessionID,
 		Timestamp: time.Now(),
 	})
