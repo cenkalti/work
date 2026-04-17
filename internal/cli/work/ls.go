@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/cenkalti/work/internal/git"
+	"github.com/cenkalti/work/internal/paths"
 	"github.com/spf13/cobra"
 )
 
@@ -58,11 +59,10 @@ func listAllProjects() error {
 }
 
 func allProjectWorktrees() ([]string, error) {
-	home, err := os.UserHomeDir()
+	projectsDir, err := paths.ProjectsDir()
 	if err != nil {
 		return nil, err
 	}
-	projectsDir := filepath.Join(home, "projects")
 	entries, err := os.ReadDir(projectsDir)
 	if err != nil {
 		return nil, err

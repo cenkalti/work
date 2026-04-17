@@ -8,6 +8,7 @@ import (
 
 	"github.com/cenkalti/work/internal/git"
 	"github.com/cenkalti/work/internal/location"
+	"github.com/cenkalti/work/internal/paths"
 	"github.com/spf13/cobra"
 )
 
@@ -78,11 +79,11 @@ func resolveWorktreePath(loc *location.Location, name string) (string, error) {
 	}
 	project, branch, ok := strings.Cut(name, "/")
 	if ok {
-		home, err := os.UserHomeDir()
+		projectsDir, err := paths.ProjectsDir()
 		if err != nil {
 			return "", err
 		}
-		wtPath = filepath.Join(home, "projects", project, ".work", "tree", branch)
+		wtPath = filepath.Join(projectsDir, project, ".work", "tree", branch)
 		if _, err := os.Stat(wtPath); err == nil {
 			return wtPath, nil
 		}

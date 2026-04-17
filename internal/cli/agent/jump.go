@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cenkalti/work/internal/paths"
 	"github.com/spf13/cobra"
 )
 
@@ -44,12 +45,12 @@ func jumpCmd() *cobra.Command {
 }
 
 func resolveAgentPath(id string) (string, error) {
-	home, err := os.UserHomeDir()
+	projectsDir, err := paths.ProjectsDir()
 	if err != nil {
 		return "", err
 	}
 	project, branch, _ := strings.Cut(id, "/")
-	projectPath := filepath.Join(home, "projects", project)
+	projectPath := filepath.Join(projectsDir, project)
 	path := projectPath
 	if branch != "" {
 		path = filepath.Join(projectPath, ".work", "tree", branch)

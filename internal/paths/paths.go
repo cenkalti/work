@@ -1,9 +1,24 @@
 package paths
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 )
+
+// ProjectsDir returns the root directory containing all projects.
+// Honors WORK_PROJECTS_DIR, falling back to $HOME/projects.
+func ProjectsDir() (string, error) {
+	if dir := os.Getenv("WORK_PROJECTS_DIR"); dir != "" {
+		return dir, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("resolving projects dir: %w", err)
+	}
+	return filepath.Join(home, "projects"), nil
+}
 
 func WorktreeRoot(root string) string {
 	return filepath.Join(root, ".work", "tree")

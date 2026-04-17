@@ -32,11 +32,11 @@ Names are absolute (dot-separated branch paths).`,
 			}
 			branch := args[0]
 			if project, sub, ok := strings.Cut(branch, "/"); ok {
-				home, err := os.UserHomeDir()
+				projectsDir, err := paths.ProjectsDir()
 				if err != nil {
 					return err
 				}
-				projectPath := filepath.Join(home, "projects", project)
+				projectPath := filepath.Join(projectsDir, project)
 				if info, err := os.Stat(projectPath); err == nil && info.IsDir() {
 					loc = &location.Location{RootRepo: projectPath}
 					branch = sub
