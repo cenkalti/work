@@ -10,20 +10,21 @@ import (
 	"github.com/cenkalti/work/internal/task"
 )
 
-// Create sets up a worktree and workspace for the given branch.
+// Create sets up a worktree and workspace. `name` is the dot-separated task
+// identity used for paths; `branch` is the git ref (may carry a prefix).
 // For child tasks, the task file is marked active.
 // Returns the worktree path.
-func Create(ctx *location.Location, branch string) (string, error) {
-	parentBranch := paths.ParentBranch(branch)
-	taskID := paths.BranchID(branch)
+func Create(ctx *location.Location, name, branch string) (string, error) {
+	parentName := paths.ParentBranch(name)
+	taskID := paths.BranchID(name)
 
-	if parentBranch != "" {
-		if err := setTaskActive(paths.TasksDir(ctx.RootRepo, parentBranch), taskID); err != nil {
+	if parentName != "" {
+		if err := setTaskActive(paths.TasksDir(ctx.RootRepo, parentName), taskID); err != nil {
 			return "", err
 		}
 	}
 
-	wtPath := paths.Worktree(ctx.RootRepo, branch)
+	wtPath := paths.Worktree(ctx.RootRepo, name)
 	created, err := git.CreateWorktree(ctx.RootRepo, wtPath, branch, git.DefaultBranch(ctx.RootRepo))
 	if err != nil {
 		return "", fmt.Errorf("creating worktree: %w", err)
@@ -36,7 +37,7 @@ func Create(ctx *location.Location, branch string) (string, error) {
 		}
 	}()
 
-	spacePath := paths.Workspace(ctx.RootRepo, branch)
+	spacePath := paths.Workspace(ctx.RootRepo, name)
 	if err := os.MkdirAll(spacePath, 0755); err != nil {
 		return "", fmt.Errorf("creating workspace: %w", err)
 	}

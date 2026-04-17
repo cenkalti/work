@@ -25,8 +25,9 @@ Prints the worktree path on success.`,
 			if err != nil {
 				return err
 			}
-			branch := os.Getenv("WORK_BRANCH_PREFIX") + args[0]
-			wtPath, err := session.Create(loc, branch)
+			name := args[0]
+			branch := os.Getenv("WORK_BRANCH_PREFIX") + name
+			wtPath, err := session.Create(loc, name, branch)
 			if err != nil {
 				return err
 			}
