@@ -6,9 +6,8 @@ import (
 
 func Root() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "work",
-		Short:             "Multi-task orchestration for Claude Code",
-		PersistentPreRunE: persistWorkContext,
+		Use:   "work",
+		Short: "Multi-task orchestration for Claude Code",
 	}
 
 	cmd.AddCommand(
