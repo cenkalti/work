@@ -226,9 +226,13 @@ func collectBranches(root, src string) ([]string, error) {
 
 // moveTask renames a git branch, moves its worktree, and moves its workspace.
 func moveTask(root, oldBranch, newBranch string) error {
-	// Rename git branch.
-	if err := git.RenameBranch(root, oldBranch, newBranch); err != nil {
-		return fmt.Errorf("renaming branch %s → %s: %w", oldBranch, newBranch, err)
+	// Skip the branch rename if the old branch equals the new branch with the
+	// WORK_BRANCH_PREFIX prepended — the user is dropping the prefix from the
+	// worktree path while leaving the underlying branch name alone.
+	if prefix := os.Getenv("WORK_BRANCH_PREFIX"); prefix == "" || prefix+newBranch != oldBranch {
+		if err := git.RenameBranch(root, oldBranch, newBranch); err != nil {
+			return fmt.Errorf("renaming branch %s → %s: %w", oldBranch, newBranch, err)
+		}
 	}
 
 	// Move worktree on disk.
