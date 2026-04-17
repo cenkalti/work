@@ -55,21 +55,6 @@ func DefaultBranch(repo string) string {
 	return "master"
 }
 
-// CurrentBranch returns the current branch name of the repo.
-func CurrentBranch(repo string) (string, error) {
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	cmd.Dir = repo
-	out, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("git rev-parse: %w", err)
-	}
-	branch := strings.TrimSpace(string(out))
-	if branch == "" || branch == "HEAD" {
-		return "", fmt.Errorf("not on a named branch")
-	}
-	return branch, nil
-}
-
 // ListWorktrees returns the paths of all git worktrees.
 func ListWorktrees(repo string) ([]string, error) {
 	cmd := exec.Command("git", "worktree", "list", "--porcelain")

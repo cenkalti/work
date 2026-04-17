@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cenkalti/work/internal/git"
 	"github.com/cenkalti/work/internal/paths"
 )
 
@@ -37,8 +36,9 @@ func (l *Location) WorktreeRoot() string {
 	return paths.WorktreeRoot(l.RootRepo)
 }
 
-// Detect determines the current working context by examining
-// the working directory and current branch.
+// Detect determines the current working context from the worktree directory name.
+// The task identity is derived from the worktree's path under <root>/.work/tree/,
+// not from the git branch name (which may diverge from the worktree name).
 func Detect() (*Location, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -46,14 +46,38 @@ func Detect() (*Location, error) {
 	}
 	rootRepo := resolveRootRepo(cwd)
 	loc := &Location{RootRepo: rootRepo}
-	if cwd != rootRepo {
-		branch, err := git.CurrentBranch(cwd)
-		if err != nil {
-			return nil, fmt.Errorf("detect current branch: %w", err)
-		}
-		loc.Branch = branch
+
+	top, err := worktreeTopLevel(cwd)
+	if err != nil {
+		return nil, err
 	}
+	if top == rootRepo {
+		return loc, nil
+	}
+
+	wtRoot := paths.WorktreeRoot(rootRepo)
+	if resolved, err := filepath.EvalSymlinks(wtRoot); err == nil {
+		wtRoot = resolved
+	}
+	if resolved, err := filepath.EvalSymlinks(top); err == nil {
+		top = resolved
+	}
+	name, ok := strings.CutPrefix(top, wtRoot+string(filepath.Separator))
+	if !ok {
+		return nil, fmt.Errorf("worktree %s is not under %s", top, wtRoot)
+	}
+	loc.Branch = name
 	return loc, nil
+}
+
+func worktreeTopLevel(dir string) (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse --show-toplevel: %w", err)
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 func resolveRootRepo(repo string) string {
