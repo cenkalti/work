@@ -2,6 +2,7 @@ package work
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/cenkalti/work/internal/session"
 	"github.com/spf13/cobra"
@@ -15,6 +16,7 @@ func mkCmd() *cobra.Command {
 work mk myfeature.subtask  # create child task worktree
 
 Names are absolute (dot-separated branch paths).
+If WORK_BRANCH_PREFIX is set, its value is prepended to the branch name.
 Prints the worktree path on success.`,
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: worktreeCompletionFunc,
@@ -23,7 +25,8 @@ Prints the worktree path on success.`,
 			if err != nil {
 				return err
 			}
-			wtPath, err := session.Create(loc, args[0])
+			branch := os.Getenv("WORK_BRANCH_PREFIX") + args[0]
+			wtPath, err := session.Create(loc, branch)
 			if err != nil {
 				return err
 			}
