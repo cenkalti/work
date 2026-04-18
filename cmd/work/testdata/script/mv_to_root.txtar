@@ -1,0 +1,15 @@
+# work mv <name> . promotes a task workspace back to the repo root.
+
+mkdir projects/repo
+cd projects/repo
+exec git init -q
+exec git commit --allow-empty -q -m init
+
+work mk foo
+exists .work/space/foo
+
+work mv foo .
+
+! exists .work/space/foo
+! exists .work/tree/foo
+exists workspace

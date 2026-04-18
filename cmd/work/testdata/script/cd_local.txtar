@@ -1,0 +1,11 @@
+# work cd <name> prints the worktree path.
+
+mkdir projects/repo
+cd projects/repo
+exec git init -q
+exec git commit --allow-empty -q -m init
+
+work mk foo
+
+work cd foo
+stdout '/projects/repo/\.work/tree/foo$'

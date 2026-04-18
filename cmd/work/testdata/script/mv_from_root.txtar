@@ -1,0 +1,18 @@
+# work mv . <name> demotes the root workspace into a named task.
+
+mkdir projects/repo
+cd projects/repo
+exec git init -q
+exec git commit --allow-empty -q -m init
+
+mkdir workspace
+cp $WORK/seed.txt workspace/note.md
+
+work mv . foo
+
+! exists workspace
+exists .work/space/foo/note.md
+exists .work/tree/foo
+
+-- seed.txt --
+hello

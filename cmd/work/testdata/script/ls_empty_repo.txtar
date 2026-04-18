@@ -1,0 +1,10 @@
+# work ls in a repo with no worktrees prints nothing and exits cleanly.
+
+mkdir projects/repo
+cd projects/repo
+exec git init -q
+exec git commit --allow-empty -q -m init
+
+work ls
+! stdout .
+! stderr .

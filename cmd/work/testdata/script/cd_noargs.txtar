@@ -1,0 +1,9 @@
+# work cd without args prints the root repo path.
+
+mkdir projects/repo
+cd projects/repo
+exec git init -q
+exec git commit --allow-empty -q -m init
+
+work cd
+stdout '/projects/repo$'

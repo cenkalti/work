@@ -1,0 +1,14 @@
+# work ls from inside a project lists worktrees by their short name.
+
+mkdir projects/repo
+cd projects/repo
+exec git init -q
+exec git commit --allow-empty -q -m init
+
+work mk alpha
+work mk beta
+
+work ls
+stdout '^alpha$'
+stdout '^beta$'
+! stdout '/'

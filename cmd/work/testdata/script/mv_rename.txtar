@@ -1,0 +1,22 @@
+# work mv renames a worktree and its workspace; branch is renamed too.
+
+mkdir projects/repo
+cd projects/repo
+exec git init -q
+exec git commit --allow-empty -q -m init
+
+work mk foo
+exists .work/tree/foo
+exists .work/space/foo
+
+work mv foo bar
+
+! exists .work/tree/foo
+! exists .work/space/foo
+exists .work/tree/bar
+exists .work/space/bar
+
+exec git branch --list bar
+stdout 'bar'
+exec git branch --list foo
+! stdout 'foo'

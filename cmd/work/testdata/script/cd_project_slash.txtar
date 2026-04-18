@@ -1,0 +1,11 @@
+# work cd <project>/<branch> resolves from outside any repo.
+
+mkdir projects/alpha
+cd projects/alpha
+exec git init -q
+exec git commit --allow-empty -q -m init
+work mk foo
+
+cd $WORK
+work cd alpha/foo
+stdout '/projects/alpha/\.work/tree/foo$'

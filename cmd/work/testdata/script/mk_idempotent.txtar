@@ -1,0 +1,14 @@
+# work mk is idempotent: a second mk for the same name reuses the worktree.
+
+mkdir projects/repo
+cd projects/repo
+exec git init -q
+exec git commit --allow-empty -q -m init
+
+work mk foo
+stdout '/\.work/tree/foo$'
+
+work mk foo
+stdout '/\.work/tree/foo$'
+
+exists .work/tree/foo

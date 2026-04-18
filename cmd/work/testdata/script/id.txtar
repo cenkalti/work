@@ -1,0 +1,14 @@
+# work id prints "." at the repo root and the worktree name inside a worktree.
+
+mkdir projects/repo
+cd projects/repo
+exec git init -q
+exec git commit --allow-empty -q -m init
+
+work id
+stdout '^\.$'
+
+work mk foo
+cd .work/tree/foo
+work id
+stdout '^foo$'

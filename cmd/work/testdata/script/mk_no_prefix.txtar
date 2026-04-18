@@ -1,0 +1,15 @@
+# work mk without WORK_BRANCH_PREFIX uses the name as both path and branch.
+
+mkdir projects/repo
+cd projects/repo
+exec git init -q
+exec git commit --allow-empty -q -m init
+
+work mk feature
+stdout '/\.work/tree/feature$'
+
+exists .work/tree/feature
+exists .work/space/feature
+
+exec git branch --list feature
+stdout 'feature'
