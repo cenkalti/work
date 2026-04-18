@@ -1,0 +1,26 @@
+# task ls lists all task files in ./workspace/tasks/.
+
+mkdir workspace/tasks
+cp foo.yaml workspace/tasks/foo.yaml
+cp bar.yaml workspace/tasks/bar.yaml
+
+task ls
+stdout '^bar\s+pending$'
+stdout '^foo\s+active$'
+
+-- foo.yaml --
+id: foo
+summary: do foo
+status: active
+depends_on: []
+files: []
+description: ""
+acceptance: []
+-- bar.yaml --
+id: bar
+summary: do bar
+status: pending
+depends_on: []
+files: []
+description: ""
+acceptance: []

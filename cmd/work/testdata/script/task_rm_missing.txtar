@@ -1,0 +1,6 @@
+# task rm errors when the task does not exist.
+
+mkdir workspace/tasks
+
+! task rm nope
+stderr 'nope.*not found'

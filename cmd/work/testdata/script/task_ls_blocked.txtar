@@ -1,0 +1,27 @@
+# task ls --blocked: pending tasks with unmet deps.
+
+mkdir workspace/tasks
+cp a.yaml workspace/tasks/a.yaml
+cp b.yaml workspace/tasks/b.yaml
+
+# b depends on a (pending), so b is blocked.
+task ls --blocked
+stdout '^b\s+pending$'
+! stdout '^a\b'
+
+-- a.yaml --
+id: a
+summary: a
+status: pending
+depends_on: []
+files: []
+description: ""
+acceptance: []
+-- b.yaml --
+id: b
+summary: b
+status: pending
+depends_on: [a]
+files: []
+description: ""
+acceptance: []

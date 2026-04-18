@@ -1,0 +1,20 @@
+# task set-status rejects invalid status values.
+
+mkdir workspace/tasks
+cp foo.yaml workspace/tasks/foo.yaml
+
+! task set-status foo inprogress
+stderr 'invalid status'
+
+# Status unchanged.
+task show foo
+stdout '^status: pending$'
+
+-- foo.yaml --
+id: foo
+summary: do foo
+status: pending
+depends_on: []
+files: []
+description: ""
+acceptance: []

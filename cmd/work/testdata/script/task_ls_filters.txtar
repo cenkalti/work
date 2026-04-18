@@ -1,0 +1,66 @@
+# task ls filter flags: --ready, --blocked, --active, --pending, --completed.
+
+mkdir workspace/tasks
+cp a.yaml workspace/tasks/a.yaml
+cp b.yaml workspace/tasks/b.yaml
+cp c.yaml workspace/tasks/c.yaml
+cp d.yaml workspace/tasks/d.yaml
+
+# --ready: pending tasks with all deps completed. a (no deps) and c (dep a completed? no, a is active).
+# After fixture: a=active, b=pending no deps, c=pending depends on d (completed), d=completed.
+# So ready = b (no deps) and c (d completed).
+task ls --ready
+stdout '^b\s+pending$'
+stdout '^c\s+pending$'
+! stdout '^a\b'
+! stdout '^d\b'
+
+# --active: a only.
+task ls --active
+stdout '^a\s+active$'
+! stdout '^b\b'
+
+# --completed: d only.
+task ls --completed
+stdout '^d\s+completed$'
+! stdout '^a\b'
+
+# --pending: b and c.
+task ls --pending
+stdout '^b\s+pending$'
+stdout '^c\s+pending$'
+! stdout '^a\b'
+! stdout '^d\b'
+
+-- a.yaml --
+id: a
+summary: a
+status: active
+depends_on: []
+files: []
+description: ""
+acceptance: []
+-- b.yaml --
+id: b
+summary: b
+status: pending
+depends_on: []
+files: []
+description: ""
+acceptance: []
+-- c.yaml --
+id: c
+summary: c
+status: pending
+depends_on: [d]
+files: []
+description: ""
+acceptance: []
+-- d.yaml --
+id: d
+summary: d
+status: completed
+depends_on: []
+files: []
+description: ""
+acceptance: []

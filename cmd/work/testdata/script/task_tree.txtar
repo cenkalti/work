@@ -1,0 +1,42 @@
+# task tree prints the dependency tree.
+
+mkdir workspace/tasks
+cp root.yaml workspace/tasks/root.yaml
+cp child.yaml workspace/tasks/child.yaml
+cp leaf.yaml workspace/tasks/leaf.yaml
+
+task tree
+stdout '^root$'
+stdout 'child'
+stdout 'leaf'
+
+# Filter by subtree root.
+task tree child
+stdout '^child$'
+stdout 'leaf'
+! stdout '^root$'
+
+-- root.yaml --
+id: root
+summary: root task
+status: pending
+depends_on: [child]
+files: []
+description: ""
+acceptance: []
+-- child.yaml --
+id: child
+summary: child task
+status: pending
+depends_on: [leaf]
+files: []
+description: ""
+acceptance: []
+-- leaf.yaml --
+id: leaf
+summary: leaf task
+status: completed
+depends_on: []
+files: []
+description: ""
+acceptance: []

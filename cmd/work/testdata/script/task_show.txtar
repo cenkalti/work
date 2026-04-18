@@ -1,0 +1,18 @@
+# task show prints the task as YAML.
+
+mkdir workspace/tasks
+cp foo.yaml workspace/tasks/foo.yaml
+
+task show foo
+stdout '^id: foo$'
+stdout '^summary: do foo$'
+stdout '^status: active$'
+
+-- foo.yaml --
+id: foo
+summary: do foo
+status: active
+depends_on: []
+files: []
+description: ""
+acceptance: []

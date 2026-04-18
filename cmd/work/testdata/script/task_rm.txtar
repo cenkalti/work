@@ -1,0 +1,18 @@
+# task rm deletes the YAML file.
+
+mkdir workspace/tasks
+cp foo.yaml workspace/tasks/foo.yaml
+exists workspace/tasks/foo.yaml
+
+task rm foo
+stdout 'Removed task foo'
+! exists workspace/tasks/foo.yaml
+
+-- foo.yaml --
+id: foo
+summary: do foo
+status: pending
+depends_on: []
+files: []
+description: ""
+acceptance: []

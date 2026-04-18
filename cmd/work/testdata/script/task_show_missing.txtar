@@ -1,0 +1,6 @@
+# task show on a missing id errors.
+
+mkdir workspace/tasks
+
+! task show nope
+stderr 'nope'

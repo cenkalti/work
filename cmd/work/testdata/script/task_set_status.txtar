@@ -1,0 +1,23 @@
+# task set-status changes the task's status field on disk.
+
+mkdir workspace/tasks
+cp foo.yaml workspace/tasks/foo.yaml
+
+task set-status foo active
+stdout 'Set foo to active'
+
+task show foo
+stdout '^status: active$'
+
+task set-status foo completed
+task show foo
+stdout '^status: completed$'
+
+-- foo.yaml --
+id: foo
+summary: do foo
+status: pending
+depends_on: []
+files: []
+description: ""
+acceptance: []

@@ -1,0 +1,7 @@
+# task ls with no task files prints nothing.
+
+mkdir workspace/tasks
+
+task ls
+! stdout .
+! stderr .
