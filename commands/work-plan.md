@@ -46,10 +46,11 @@ Propose an implementation plan:
 - Milestones or phases
 - Open questions or decisions the human needs to make
 
-Then critically review your own plan. Add a **Concerns** section at the bottom:
-- What are the risks?
-- What's missing or over-engineered?
-- What assumptions are you making?
+Then critically review your own plan. Add a **Concerns** section at the bottom covering:
+- **Risks** — what could go wrong, what's hard to reverse
+- **Over-engineering** — what's bigger than the goal requires
+- **Unknowns** — assumptions that haven't been verified
+- **Missing** — gaps you'd notice only while implementing
 
 Write everything to `plan.md`. Discuss with the human and revise until approved. No separate review document.
 
@@ -60,7 +61,7 @@ Use the `create_task` tool (from the `task` MCP server) to create each task. Goo
 - **Specific** — clear acceptance criteria, not vague ("add JWT auth to /login" not "work on auth")
 - **Small** — completable in one focused session (hours, not days); break large tasks down
 - **Minimal dependencies** — only depend on tasks that must genuinely come first
-- **Testable** — you know exactly when it's done
+- **Testable** — each task declares explicit, verifiable acceptance criteria (commands to run, behaviors to observe, artifacts to produce)
 
 After creating all tasks, run `task tree` to verify the dependency graph looks correct.
 
@@ -84,13 +85,15 @@ Best for: ≤5 tasks, simple linear work, no parallelism needed.
 **Option B — Worktrees (separate agents):** Each task runs as an isolated Claude Code session in its own git worktree.
 
 ```bash
-task ls --ready  # show what's ready
-work run <id>       # launch a separate agent for a task
+task ls --ready              # show what's ready
+work mk <id>                 # create worktree, prints path
+# cd into the printed path, then:
+agent run                    # start a Claude session in the worktree
 ```
 
 Best for: many tasks, parallel work, or tasks that benefit from isolation.
 
-If the human chooses **Option A**, invoke `/work-execute` and work through ready tasks one by one, marking each complete before moving to the next.
+If the human chooses **Option A**, work through ready tasks here in dependency order. For each task: run `task show <id>` to read its details, implement it, verify its acceptance criteria, then `task set-status <id> completed`. Do not invoke `/work-execute` — that command is for worktree sessions where a task is assigned to the agent.
 
 ## Rules
 
@@ -99,3 +102,4 @@ If the human chooses **Option A**, invoke `/work-execute` and work through ready
 - Read before asking — don't ask questions you can answer by exploring the codebase.
 - Keep documents concise. No filler.
 - Each document should stand alone — readable without the others.
+- If executing a task reveals that `plan.md` is wrong or incomplete, stop, update `plan.md`, and re-decompose before continuing.
