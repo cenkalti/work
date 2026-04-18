@@ -94,6 +94,10 @@ func handleSessionEnd() error {
 }
 
 func handlePreToolUse(p *hookPayload) error {
+	// Elicitation responses don't fire a hook, so PreToolUse is the first
+	// signal we get that Claude has resumed working after a prompt.
+	setAgentStatus(agentpkg.StatusRunning)
+	clearInbox()
 	if p.ToolName == "Bash" {
 		return runBashCheck(p.ToolInput.Command, os.Stdout)
 	}
