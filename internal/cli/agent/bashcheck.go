@@ -1,15 +1,12 @@
 package agent
 
 import (
-	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
+	"os/exec"
 	"time"
 )
 
@@ -35,7 +32,7 @@ const bashClassifyPrompt = `Classify this bash command to decide whether it need
 Compound commands: For pipes (|), chains (&&, ;, ||), and subshells, evaluate ALL components. If any component would be 'ask', the whole command is 'ask'.
 When in doubt, return 'ask'.
 
-Use the classify_command tool to return your decision.`
+Respond with a JSON object matching the provided schema.`
 
 type hookOutput struct {
 	HookSpecificOutput struct {
@@ -50,15 +47,7 @@ func runBashCheck(command string, stdout io.Writer) error {
 		return writeDecision(stdout, "ask", "no command found in hook input")
 	}
 
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		apiKey = loadEnvValue("ANTHROPIC_API_KEY")
-	}
-	if apiKey == "" {
-		return writeDecision(stdout, "ask", "ANTHROPIC_API_KEY not set")
-	}
-
-	decision, reason, err := classifyCommand(apiKey, command)
+	decision, reason, err := classifyCommand(command)
 	if err != nil {
 		return writeDecision(stdout, "ask", "classification error: "+err.Error())
 	}
@@ -66,118 +55,65 @@ func runBashCheck(command string, stdout io.Writer) error {
 	return writeDecision(stdout, decision, reason)
 }
 
-func classifyCommand(apiKey, command string) (string, string, error) {
-	reqBody := map[string]any{
-		"model":      "claude-haiku-4-5",
-		"max_tokens": 256,
-		"messages": []map[string]string{
-			{"role": "user", "content": "Command: " + command},
-		},
-		"system": bashClassifyPrompt,
-		"tool_choice": map[string]string{
-			"type": "tool",
-			"name": "classify_command",
-		},
-		"tools": []map[string]any{
-			{
-				"name":        "classify_command",
-				"description": "Return the classification decision for a bash command.",
-				"input_schema": map[string]any{
-					"type": "object",
-					"properties": map[string]any{
-						"decision": map[string]any{
-							"type":        "string",
-							"enum":        []string{"allow", "ask"},
-							"description": "Whether to allow the command or ask the user.",
-						},
-						"reason": map[string]any{
-							"type":        "string",
-							"description": "Brief explanation of why.",
-						},
-					},
-					"required": []string{"decision", "reason"},
-				},
+func classifyCommand(command string) (string, string, error) {
+	schemaJSON, err := json.Marshal(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"decision": map[string]any{
+				"type": "string",
+				"enum": []string{"allow", "ask"},
 			},
+			"reason": map[string]any{"type": "string"},
 		},
-	}
-
-	body, err := json.Marshal(reqBody)
+		"required":             []string{"decision", "reason"},
+		"additionalProperties": false,
+	})
 	if err != nil {
-		return "", "", fmt.Errorf("marshal request: %w", err)
+		return "", "", fmt.Errorf("marshal schema: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewReader(body))
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "claude",
+		"-p",
+		"--model", "claude-haiku-4-5",
+		"--output-format", "json",
+		"--json-schema", string(schemaJSON),
+		"--append-system-prompt", bashClassifyPrompt,
+		"--setting-sources", "",
+		"--tools", "",
+		"--no-session-persistence",
+		"Command: "+command,
+	)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	out, err := cmd.Output()
 	if err != nil {
-		return "", "", fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", "", fmt.Errorf("API call: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		return "", "", fmt.Errorf("API returned %d: %s", resp.StatusCode, string(respBody))
+		return "", "", fmt.Errorf("claude: %w: %s", err, stderr.String())
 	}
 
-	var apiResp struct {
-		Content []struct {
-			Type  string          `json:"type"`
-			Input json.RawMessage `json:"input"`
-		} `json:"content"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return "", "", fmt.Errorf("decode response: %w", err)
-	}
-
-	for _, block := range apiResp.Content {
-		if block.Type != "tool_use" {
-			continue
-		}
-		var result struct {
+	var env struct {
+		StructuredOutput struct {
 			Decision string `json:"decision"`
 			Reason   string `json:"reason"`
-		}
-		if err := json.Unmarshal(block.Input, &result); err != nil {
-			return "", "", fmt.Errorf("parse tool input: %w", err)
-		}
-		if result.Decision != "allow" && result.Decision != "ask" {
-			return "ask", "unexpected decision: " + result.Decision, nil
-		}
-		return result.Decision, result.Reason, nil
+		} `json:"structured_output"`
+		IsError bool   `json:"is_error"`
+		Result  string `json:"result"`
+	}
+	if err := json.Unmarshal(out, &env); err != nil {
+		return "", "", fmt.Errorf("decode claude output: %w", err)
+	}
+	if env.IsError {
+		return "", "", fmt.Errorf("claude error: %s", env.Result)
 	}
 
-	return "", "", fmt.Errorf("no tool_use block in response")
-}
-
-func loadEnvValue(key string) string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
+	decision := env.StructuredOutput.Decision
+	if decision != "allow" && decision != "ask" {
+		return "ask", "unexpected decision: " + decision, nil
 	}
-	f, err := os.Open(filepath.Join(home, "projects", "work", ".env"))
-	if err != nil {
-		return ""
-	}
-	defer func() { _ = f.Close() }()
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		k, v, ok := strings.Cut(line, "=")
-		if ok && strings.TrimSpace(k) == key {
-			return strings.Trim(strings.TrimSpace(v), `"'`)
-		}
-	}
-	return ""
+	return decision, env.StructuredOutput.Reason, nil
 }
 
 func writeDecision(w io.Writer, decision, reason string) error {
