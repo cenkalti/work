@@ -1,0 +1,18 @@
+# work mk with WORK_BRANCH_PREFIX:
+# worktree path has no prefix, git branch does.
+
+env WORK_BRANCH_PREFIX=jakealti/
+
+mkdir projects/teleport
+cd projects/teleport
+exec git init -q
+exec git commit --allow-empty -q -m init
+
+work mk asdf
+stdout '/\.work/tree/asdf$'
+
+exists .work/tree/asdf
+! exists .work/tree/jakealti
+
+exec git branch --list jakealti/asdf
+stdout 'jakealti/asdf'

@@ -1,0 +1,11 @@
+# work ls from a non-git cwd enumerates project/branch under $WORK_PROJECTS_DIR.
+
+mkdir projects/alpha
+cd projects/alpha
+exec git init -q
+exec git commit --allow-empty -q -m init
+work mk foo
+
+cd $WORK
+work ls
+stdout '^alpha/foo$'

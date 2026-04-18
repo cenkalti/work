@@ -1,0 +1,14 @@
+# work rm <project>/<name> from outside any repo resolves project under $WORK_PROJECTS_DIR.
+
+mkdir projects/beta
+cd projects/beta
+exec git init -q
+exec git commit --allow-empty -q -m init
+work mk bar
+exists .work/tree/bar
+
+cd $WORK
+work rm -y beta/bar
+
+cd projects/beta
+! exists .work/tree/bar
