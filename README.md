@@ -22,13 +22,7 @@ This writes `work@work-dev` to `~/.claude/settings.json` (`extraKnownMarketplace
 
 ## image-gen MCP
 
-Stdio MCP server that exposes OpenAI `gpt-image-1` as two tools (`generate_image`, `edit_image`). Installed by `go install ./cmd/...` alongside the other binaries.
-
-Register with Claude Code (user scope so every project sees it):
-
-```bash
-claude mcp add --scope user --transport stdio image-gen -- image-gen
-```
+Stdio MCP server that exposes OpenAI `gpt-image-1` as two tools (`generate_image`, `edit_image`). Installed by `go install ./cmd/...` alongside the other binaries and registered by the plugin's `.mcp.json`.
 
 Environment:
 

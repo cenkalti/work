@@ -115,7 +115,7 @@ func cleanupLegacyState() error {
 	removeLegacyFiles(filepath.Join(home, ".claude", "agents"), []string{
 		"presentation.md",
 	})
-	removeLegacyMCPs("task", "harness")
+	removeLegacyMCPs("task", "harness", "image-gen")
 	return nil
 }
 
