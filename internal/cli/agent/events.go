@@ -25,7 +25,7 @@ type hookPayload struct {
 }
 
 func hookCmd() *cobra.Command {
-	return &cobra.Command{
+	root := &cobra.Command{
 		Use:    "hook",
 		Short:  "Dispatch Claude Code hook events (reads event from stdin)",
 		Hidden: true,
@@ -55,6 +55,8 @@ func hookCmd() *cobra.Command {
 			return nil
 		},
 	}
+	root.AddCommand(validateHTMLCmd())
+	return root
 }
 
 func handleSessionStart(p *hookPayload) error {

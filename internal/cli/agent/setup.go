@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cenkalti/work/agents"
 	"github.com/cenkalti/work/commands"
 	"github.com/spf13/cobra"
 )
@@ -43,6 +44,24 @@ func desiredHookGroups() []hookGroup {
 	return []hookGroup{{Matcher: "", Hooks: []hookEntry{{Type: "command", Command: "agent hook"}}}}
 }
 
+// per-event hook groups that live outside the fan-out list in hookEvents.
+type eventHook struct {
+	Event string
+	Group hookGroup
+}
+
+func desiredEventHooks() []eventHook {
+	return []eventHook{
+		{
+			Event: "PostToolUse",
+			Group: hookGroup{
+				Matcher: "Write|Edit",
+				Hooks:   []hookEntry{{Type: "command", Command: "agent hook validate-html"}},
+			},
+		},
+	}
+}
+
 // MCP servers to register
 var desiredMCPs = []struct {
 	Name    string
@@ -66,6 +85,9 @@ func setupCmd() *cobra.Command {
 			}
 			if err := setupCommands(); err != nil {
 				return fmt.Errorf("commands: %w", err)
+			}
+			if err := setupAgents(); err != nil {
+				return fmt.Errorf("agents: %w", err)
 			}
 			return nil
 		},
@@ -132,6 +154,9 @@ func setupHooks() error {
 		for _, desired := range desiredHookGroups() {
 			addHookGroup(hooks, event, desired)
 		}
+	}
+	for _, eh := range desiredEventHooks() {
+		addHookGroup(hooks, eh.Event, eh.Group)
 	}
 
 	after, _ := json.Marshal(hooks)
@@ -247,6 +272,52 @@ func setupCommands() error {
 		fmt.Println("commands: updated")
 	} else {
 		fmt.Println("commands: up to date")
+	}
+	return nil
+}
+
+func setupAgents() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	agentsDir := filepath.Join(home, ".claude", "agents")
+	if err := os.MkdirAll(agentsDir, 0755); err != nil {
+		return err
+	}
+
+	entries, err := agents.FS.ReadDir(".")
+	if err != nil {
+		return fmt.Errorf("reading embedded agents: %w", err)
+	}
+
+	changed := false
+	for _, e := range entries {
+		if !e.Type().IsRegular() || filepath.Ext(e.Name()) != ".md" {
+			continue
+		}
+		data, err := agents.FS.ReadFile(e.Name())
+		if err != nil {
+			return fmt.Errorf("reading embedded %s: %w", e.Name(), err)
+		}
+		dst := filepath.Join(agentsDir, e.Name())
+
+		if existing, err := os.ReadFile(dst); err == nil && bytes.Equal(existing, data) {
+			continue
+		}
+		if err := os.Remove(dst); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("removing %s: %w", dst, err)
+		}
+		if err := os.WriteFile(dst, data, 0644); err != nil {
+			return fmt.Errorf("writing %s: %w", dst, err)
+		}
+		changed = true
+	}
+
+	if changed {
+		fmt.Println("agents: updated")
+	} else {
+		fmt.Println("agents: up to date")
 	}
 	return nil
 }
