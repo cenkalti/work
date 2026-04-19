@@ -93,7 +93,7 @@ agent run                    # start a Claude session in the worktree
 
 Best for: many tasks, parallel work, or tasks that benefit from isolation.
 
-If the human chooses **Option A**, work through ready tasks here in dependency order. For each task: run `task show <id>` to read its details, implement it, verify its acceptance criteria, then `task set-status <id> completed`. Do not invoke `/work-execute` — that command is for worktree sessions where a task is assigned to the agent.
+If the human chooses **Option A**, work through ready tasks here in dependency order. For each task: run `task show <id>` to read its details, implement it, verify its acceptance criteria, then `task set-status <id> completed`. Do not invoke `/work:execute` — that command is for worktree sessions where a task is assigned to the agent.
 
 ## Rules
 

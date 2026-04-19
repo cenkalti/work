@@ -39,12 +39,12 @@ func printTaskContext(rootRepo, branch string) error {
 func printRootTaskContext(branch string) {
 	fmt.Printf("# Task: %s\n\n", branch)
 	fmt.Printf("You are working on task **%s**. Work is a multi-task orchestrator that decomposes plans into subtasks with dependencies, then runs each subtask as a separate Claude Code instance in its own git worktree.\n\n", branch)
-	fmt.Printf("Use the `/work-plan` slash command to start the planning workflow.\n\n")
+	fmt.Printf("Use the `/work:plan` slash command to start the planning workflow.\n\n")
 	fmt.Printf("## Workspace\n\n")
 	fmt.Printf("Your workspace is at `workspace/`. Use it for all planning documents.\n\n")
 	printAvailableCommands()
 	fmt.Printf("## Key Files\n\n")
-	fmt.Println("- `workspace/plan.md` — The implementation plan (created during `/work-plan`)")
+	fmt.Println("- `workspace/plan.md` — The implementation plan (created during `/work:plan`)")
 	fmt.Println("- `workspace/tasks/` — Subtask JSON files (created via the task MCP tool)")
 }
 
