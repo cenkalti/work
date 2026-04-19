@@ -1,0 +1,6 @@
+{
+  "name": "work-dev",
+  "plugins": [
+    { "name": "work", "source": "./" }
+  ]
+}

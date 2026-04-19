@@ -26,7 +26,7 @@ work cd [name]               # change directory to worktree (requires shell inte
 ### Agent Commands (`agent` binary)
 
 ```bash
-agent setup                  # set up Claude Code hooks, MCP servers, and slash commands
+agent setup                  # register this repo as a Claude Code plugin in ~/.claude/settings.json
 agent run                    # start or resume a claude session in the current worktree
 agent ps                     # list agents across all projects (--running, --active)
 ```
@@ -161,8 +161,8 @@ Work is a multi-task orchestrator for Claude Code. It decomposes plans into task
 
 ## Slash Commands
 
-Slash commands live in `commands/` at the repo root. Embedded into the `agent` binary and written to `~/.claude/commands/` by `agent setup`.
+Slash commands live in `commands/` at the repo root and ship as part of the Claude Code plugin (see `.claude-plugin/plugin.json`). Claude Code loads them in place; no copy step is needed.
 
-1. **`commands/work-plan.md`** — `/work-plan`. Human-driven planning session: goal capture, research, plan, task decomposition via the task MCP tool.
+1. **`commands/plan.md`** — `/work:plan`. Human-driven planning session: goal capture, research, plan, task decomposition via the task MCP tool.
 
-2. **`commands/work-execute.md`** — `/work-execute`. Run inside a task's Claude Code session to work on the assigned task and maintain a work log.
+2. **`commands/execute.md`** — `/work:execute`. Run inside a task's Claude Code session to work on the assigned task and maintain a work log.

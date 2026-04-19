@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,139 +8,157 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cenkalti/work/agents"
-	"github.com/cenkalti/work/commands"
 	"github.com/spf13/cobra"
 )
 
-// hook entry in settings.json
-type hookEntry struct {
-	Type    string `json:"type"`
-	Command string `json:"command"`
-	Async   bool   `json:"async,omitempty"`
-}
-
-// hook group is a matcher + list of hooks
-type hookGroup struct {
-	Matcher string      `json:"matcher"`
-	Hooks   []hookEntry `json:"hooks"`
-}
-
-// desired hooks to ensure exist in settings.json
-var hookEvents = []string{
-	"SessionStart",
-	"SessionEnd",
-	"PreToolUse",
-	"UserPromptSubmit",
-	"Stop",
-	"StopFailure",
-	"Notification",
-	"PermissionRequest",
-	"Elicitation",
-}
-
-func desiredHookGroups() []hookGroup {
-	return []hookGroup{{Matcher: "", Hooks: []hookEntry{{Type: "command", Command: "agent hook"}}}}
-}
-
-// per-event hook groups that live outside the fan-out list in hookEvents.
-type eventHook struct {
-	Event string
-	Group hookGroup
-}
-
-func desiredEventHooks() []eventHook {
-	return []eventHook{
-		{
-			Event: "PostToolUse",
-			Group: hookGroup{
-				Matcher: "Write|Edit",
-				Hooks:   []hookEntry{{Type: "command", Command: "agent hook validate-html"}},
-			},
-		},
-	}
-}
-
-// MCP servers to register
-var desiredMCPs = []struct {
-	Name    string
-	Command string
-	Args    []string
-}{
-	{Name: "task", Command: "task", Args: []string{"mcp"}},
-	{Name: "harness", Command: "harness", Args: nil},
-}
+const (
+	pluginName      = "work"
+	marketplaceName = "work-dev"
+)
 
 func setupCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "setup",
-		Short: "Set up Claude Code hooks, MCP servers, and slash commands",
+		Short: "Register this repo as a Claude Code plugin in ~/.claude/settings.json",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := setupHooks(); err != nil {
-				return fmt.Errorf("hooks: %w", err)
+			pluginDir, err := findPluginDir()
+			if err != nil {
+				return err
 			}
-			if err := setupMCPs(); err != nil {
-				return fmt.Errorf("mcp: %w", err)
+			if err := registerPlugin(pluginDir); err != nil {
+				return fmt.Errorf("registering plugin: %w", err)
 			}
-			if err := setupCommands(); err != nil {
-				return fmt.Errorf("commands: %w", err)
-			}
-			if err := setupAgents(); err != nil {
-				return fmt.Errorf("agents: %w", err)
+			if err := cleanupLegacyState(); err != nil {
+				return fmt.Errorf("cleaning legacy state: %w", err)
 			}
 			return nil
 		},
 	}
 }
 
-func setupHooks() error {
+// findPluginDir returns the absolute path to the plugin root (the directory
+// containing .claude-plugin/plugin.json), searching from CWD upward.
+func findPluginDir() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	dir := cwd
+	for {
+		if _, err := os.Stat(filepath.Join(dir, ".claude-plugin", "plugin.json")); err == nil {
+			return filepath.EvalSymlinks(dir)
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", fmt.Errorf(".claude-plugin/plugin.json not found in %s or any parent; run `agent setup` from the plugin repo root", cwd)
+		}
+		dir = parent
+	}
+}
+
+func registerPlugin(pluginDir string) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
 	}
 	settingsPath := filepath.Join(home, ".claude", "settings.json")
 
-	// Read existing settings or start fresh.
-	var settings map[string]any
-	data, err := os.ReadFile(settingsPath)
+	settings, err := readSettings(settingsPath)
 	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-		settings = make(map[string]any)
-	} else {
-		if err := json.Unmarshal(data, &settings); err != nil {
-			return fmt.Errorf("parsing %s: %w", settingsPath, err)
-		}
+		return err
 	}
 
-	// Get or create hooks map.
-	var hooks map[string]any
-	if h, ok := settings["hooks"]; ok {
-		hooks, _ = h.(map[string]any)
+	marketplaces, _ := settings["extraKnownMarketplaces"].(map[string]any)
+	if marketplaces == nil {
+		marketplaces = map[string]any{}
 	}
+	marketplaces[marketplaceName] = map[string]any{
+		"source": map[string]any{
+			"source": "directory",
+			"path":   pluginDir,
+		},
+	}
+	settings["extraKnownMarketplaces"] = marketplaces
+
+	enabled, _ := settings["enabledPlugins"].(map[string]any)
+	if enabled == nil {
+		enabled = map[string]any{}
+	}
+	enabled[pluginName+"@"+marketplaceName] = true
+	settings["enabledPlugins"] = enabled
+
+	if err := writeSettings(settingsPath, settings); err != nil {
+		return err
+	}
+	fmt.Printf("plugin: %s@%s registered from %s\n", pluginName, marketplaceName, pluginDir)
+	return nil
+}
+
+// cleanupLegacyState removes artifacts of the pre-plugin install: the
+// `agent hook` entries in ~/.claude/settings.json hooks, the user-scope MCP
+// registrations, and the installed command/agent markdown files. The plugin
+// now owns all of these; leaving them in place would fire hooks twice and
+// shadow plugin-supplied commands.
+func cleanupLegacyState() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	if err := stripLegacyHooks(filepath.Join(home, ".claude", "settings.json")); err != nil {
+		return err
+	}
+	removeLegacyFiles(filepath.Join(home, ".claude", "commands"), []string{
+		"plan.md", "execute.md", "recall.md",
+		"work-plan.md", "work-execute.md", // retired names
+	})
+	removeLegacyFiles(filepath.Join(home, ".claude", "agents"), []string{
+		"presentation.md",
+	})
+	removeLegacyMCPs("task", "harness")
+	return nil
+}
+
+func stripLegacyHooks(settingsPath string) error {
+	settings, err := readSettings(settingsPath)
+	if err != nil {
+		return err
+	}
+	hooks, _ := settings["hooks"].(map[string]any)
 	if hooks == nil {
-		hooks = make(map[string]any)
+		return nil
 	}
 
-	before, _ := json.Marshal(hooks)
-
-	// Strip all existing "agent hook" entries from every event/matcher group.
-	// `agent setup` owns this namespace; non-agent entries are preserved.
+	changed := false
 	for event, raw := range hooks {
 		groups := parseHookGroups(raw)
-		var kept []hookGroup
+		var kept []map[string]any
+		anyDropped := false
 		for _, g := range groups {
-			var entries []hookEntry
+			var entries []map[string]any
 			for _, h := range g.Hooks {
-				if !isAgentHook(h.Command) {
-					entries = append(entries, h)
+				if isAgentHook(h.Command) {
+					anyDropped = true
+					continue
 				}
+				entries = append(entries, map[string]any{
+					"type":    h.Type,
+					"command": h.Command,
+				})
 			}
-			if len(entries) > 0 {
-				kept = append(kept, hookGroup{Matcher: g.Matcher, Hooks: entries})
+			if len(entries) == 0 {
+				continue
 			}
+			group := map[string]any{"hooks": entries}
+			if g.Matcher != "" {
+				group["matcher"] = g.Matcher
+			}
+			kept = append(kept, group)
 		}
+		if !anyDropped {
+			continue
+		}
+		changed = true
 		if len(kept) == 0 {
 			delete(hooks, event)
 		} else {
@@ -149,175 +166,95 @@ func setupHooks() error {
 		}
 	}
 
-	// Add desired hooks.
-	for _, event := range hookEvents {
-		for _, desired := range desiredHookGroups() {
-			addHookGroup(hooks, event, desired)
-		}
-	}
-	for _, eh := range desiredEventHooks() {
-		addHookGroup(hooks, eh.Event, eh.Group)
-	}
-
-	after, _ := json.Marshal(hooks)
-	if string(before) == string(after) {
-		fmt.Println("hooks: up to date")
+	if !changed {
+		fmt.Println("legacy hooks: none to remove")
 		return nil
 	}
-
-	settings["hooks"] = hooks
-	out, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
+	if len(hooks) == 0 {
+		delete(settings, "hooks")
+	} else {
+		settings["hooks"] = hooks
+	}
+	if err := writeSettings(settingsPath, settings); err != nil {
 		return err
 	}
-	out = append(out, '\n')
-	if err := os.WriteFile(settingsPath, out, 0644); err != nil {
-		return err
-	}
-	fmt.Println("hooks: updated")
+	fmt.Println("legacy hooks: removed")
 	return nil
 }
 
-func isAgentHook(cmd string) bool {
-	return cmd == "agent hook" || strings.HasPrefix(cmd, "agent hook ")
+func removeLegacyFiles(dir string, names []string) {
+	for _, n := range names {
+		path := filepath.Join(dir, n)
+		if err := os.Remove(path); err == nil {
+			fmt.Printf("removed legacy file: %s\n", path)
+		}
+	}
 }
 
-func parseHookGroups(raw any) []hookGroup {
-	var groups []hookGroup
+func removeLegacyMCPs(names ...string) {
+	claudeBin, err := exec.LookPath("claude")
+	if err != nil {
+		return
+	}
+	for _, name := range names {
+		cmd := exec.Command(claudeBin, "mcp", "remove", "--scope", "user", name)
+		if out, err := cmd.CombinedOutput(); err == nil {
+			fmt.Printf("removed legacy MCP: %s\n", name)
+		} else if !strings.Contains(string(out), "not found") && !strings.Contains(string(out), "No MCP") {
+			// Swallow the common "not found" cases; surface anything else.
+			fmt.Printf("mcp remove %s: %s\n", name, strings.TrimSpace(string(out)))
+		}
+	}
+}
+
+type legacyHookEntry struct {
+	Type    string `json:"type"`
+	Command string `json:"command"`
+}
+
+type legacyHookGroup struct {
+	Matcher string            `json:"matcher"`
+	Hooks   []legacyHookEntry `json:"hooks"`
+}
+
+func parseHookGroups(raw any) []legacyHookGroup {
+	var groups []legacyHookGroup
 	if data, err := json.Marshal(raw); err == nil {
 		_ = json.Unmarshal(data, &groups)
 	}
 	return groups
 }
 
-// addHookGroup appends desired entries to the matching event+matcher group,
-// creating the group if it doesn't exist.
-func addHookGroup(hooks map[string]any, event string, desired hookGroup) {
-	groups := parseHookGroups(hooks[event])
-	for i, g := range groups {
-		if g.Matcher == desired.Matcher {
-			groups[i].Hooks = append(groups[i].Hooks, desired.Hooks...)
-			hooks[event] = groups
-			return
-		}
-	}
-	groups = append(groups, desired)
-	hooks[event] = groups
+func isAgentHook(cmd string) bool {
+	return cmd == "agent hook" || strings.HasPrefix(cmd, "agent hook ")
 }
 
-func setupMCPs() error {
-	claudeBin, err := exec.LookPath("claude")
+func readSettings(path string) (map[string]any, error) {
+	data, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("claude not found in PATH")
-	}
-
-	for _, mcp := range desiredMCPs {
-		args := []string{"mcp", "add", "--transport", "stdio", "--scope", "user", mcp.Name, "--"}
-		args = append(args, mcp.Command)
-		args = append(args, mcp.Args...)
-		cmd := exec.Command(claudeBin, args...)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			// "already exists" is fine — idempotent.
-			if len(out) > 0 && strings.Contains(string(out), "already exists") {
-				fmt.Printf("mcp: %s up to date\n", mcp.Name)
-				continue
-			}
-			return fmt.Errorf("adding MCP %s: %s", mcp.Name, string(out))
+		if os.IsNotExist(err) {
+			return map[string]any{}, nil
 		}
-		fmt.Printf("mcp: %s registered\n", mcp.Name)
+		return nil, err
 	}
-	return nil
+	var settings map[string]any
+	if err := json.Unmarshal(data, &settings); err != nil {
+		return nil, fmt.Errorf("parsing %s: %w", path, err)
+	}
+	if settings == nil {
+		settings = map[string]any{}
+	}
+	return settings, nil
 }
 
-func setupCommands() error {
-	home, err := os.UserHomeDir()
+func writeSettings(path string, settings map[string]any) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+	out, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
 		return err
 	}
-	commandsDir := filepath.Join(home, ".claude", "commands")
-	if err := os.MkdirAll(commandsDir, 0755); err != nil {
-		return err
-	}
-
-	entries, err := commands.FS.ReadDir(".")
-	if err != nil {
-		return fmt.Errorf("reading embedded commands: %w", err)
-	}
-
-	changed := false
-	for _, e := range entries {
-		if !e.Type().IsRegular() || filepath.Ext(e.Name()) != ".md" {
-			continue
-		}
-		data, err := commands.FS.ReadFile(e.Name())
-		if err != nil {
-			return fmt.Errorf("reading embedded %s: %w", e.Name(), err)
-		}
-		dst := filepath.Join(commandsDir, e.Name())
-
-		if existing, err := os.ReadFile(dst); err == nil && bytes.Equal(existing, data) {
-			continue
-		}
-		if err := os.Remove(dst); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("removing %s: %w", dst, err)
-		}
-		if err := os.WriteFile(dst, data, 0644); err != nil {
-			return fmt.Errorf("writing %s: %w", dst, err)
-		}
-		changed = true
-	}
-
-	if changed {
-		fmt.Println("commands: updated")
-	} else {
-		fmt.Println("commands: up to date")
-	}
-	return nil
-}
-
-func setupAgents() error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-	agentsDir := filepath.Join(home, ".claude", "agents")
-	if err := os.MkdirAll(agentsDir, 0755); err != nil {
-		return err
-	}
-
-	entries, err := agents.FS.ReadDir(".")
-	if err != nil {
-		return fmt.Errorf("reading embedded agents: %w", err)
-	}
-
-	changed := false
-	for _, e := range entries {
-		if !e.Type().IsRegular() || filepath.Ext(e.Name()) != ".md" {
-			continue
-		}
-		data, err := agents.FS.ReadFile(e.Name())
-		if err != nil {
-			return fmt.Errorf("reading embedded %s: %w", e.Name(), err)
-		}
-		dst := filepath.Join(agentsDir, e.Name())
-
-		if existing, err := os.ReadFile(dst); err == nil && bytes.Equal(existing, data) {
-			continue
-		}
-		if err := os.Remove(dst); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("removing %s: %w", dst, err)
-		}
-		if err := os.WriteFile(dst, data, 0644); err != nil {
-			return fmt.Errorf("writing %s: %w", dst, err)
-		}
-		changed = true
-	}
-
-	if changed {
-		fmt.Println("agents: updated")
-	} else {
-		fmt.Println("agents: up to date")
-	}
-	return nil
+	out = append(out, '\n')
+	return os.WriteFile(path, out, 0644)
 }

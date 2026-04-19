@@ -1,0 +1,6 @@
+{
+  "name": "work",
+  "description": "Multi-task orchestrator: decomposes plans into subtasks, runs each as a separate Claude Code instance in its own git worktree.",
+  "version": "0.1.0",
+  "author": { "name": "Cenk Alti" }
+}

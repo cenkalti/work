@@ -14,7 +14,8 @@ go install ./cmd/...
 source /Users/cenk/projects/work/shell/work.zsh
 ```
 
-3. Set up Claude Code hooks, MCP servers, and slash commands:
+3. Register this repo as a Claude Code plugin (from the repo root):
 ```bash
 agent setup
 ```
+This writes `work@work-dev` to `~/.claude/settings.json` (`extraKnownMarketplaces` + `enabledPlugins`) and removes any state written by pre-plugin installs (stale hooks, user-scope MCP registrations, and copied command/agent files). Claude Code loads the plugin automatically on every launch.

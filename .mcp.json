@@ -1,0 +1,6 @@
+{
+  "mcpServers": {
+    "task":    { "type": "stdio", "command": "task",    "args": ["mcp"] },
+    "harness": { "type": "stdio", "command": "harness", "args": [] }
+  }
+}

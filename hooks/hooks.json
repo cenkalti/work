@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart":      [{ "hooks": [{ "type": "command", "command": "agent hook" }] }],
+    "SessionEnd":        [{ "hooks": [{ "type": "command", "command": "agent hook" }] }],
+    "PreToolUse":        [{ "hooks": [{ "type": "command", "command": "agent hook" }] }],
+    "UserPromptSubmit":  [{ "hooks": [{ "type": "command", "command": "agent hook" }] }],
+    "Stop":              [{ "hooks": [{ "type": "command", "command": "agent hook" }] }],
+    "StopFailure":       [{ "hooks": [{ "type": "command", "command": "agent hook" }] }],
+    "Notification":      [{ "hooks": [{ "type": "command", "command": "agent hook" }] }],
+    "PermissionRequest": [{ "hooks": [{ "type": "command", "command": "agent hook" }] }],
+    "Elicitation":       [{ "hooks": [{ "type": "command", "command": "agent hook" }] }],
+    "PostToolUse": [
+      { "matcher": "Write|Edit", "hooks": [{ "type": "command", "command": "agent hook validate-html" }] }
+    ]
+  }
+}
