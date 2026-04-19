@@ -19,3 +19,20 @@ source /Users/cenk/projects/work/shell/work.zsh
 agent setup
 ```
 This writes `work@work-dev` to `~/.claude/settings.json` (`extraKnownMarketplaces` + `enabledPlugins`) and removes any state written by pre-plugin installs (stale hooks, user-scope MCP registrations, and copied command/agent files). Claude Code loads the plugin automatically on every launch.
+
+## image-gen MCP
+
+Stdio MCP server that exposes OpenAI `gpt-image-1` as two tools (`generate_image`, `edit_image`). Installed by `go install ./cmd/...` alongside the other binaries.
+
+Register with Claude Code (user scope so every project sees it):
+
+```bash
+claude mcp add --scope user --transport stdio image-gen -- image-gen
+```
+
+Environment:
+
+- `OPENAI_API_KEY` — required.
+- `IMAGE_GEN_DEFAULT_DIR` — optional. If set, relative `output_path` values are resolved against this directory. If unset, relative paths are rejected.
+
+Security note: the server runs locally as you and writes to any absolute path the tool receives. Treat `output_path` as trusted; do not expose this MCP to untrusted prompts.
