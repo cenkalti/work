@@ -1,5 +1,6 @@
 {
   "name": "work-dev",
+  "owner": { "name": "Cenk Alti" },
   "plugins": [
     { "name": "work", "source": "./" }
   ]
