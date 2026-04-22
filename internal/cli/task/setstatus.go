@@ -21,7 +21,7 @@ task set-status <id> completed   # mark task as completed`,
 		Args:              cobra.ExactArgs(2),
 		ValidArgsFunction: setCompletionFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, status := args[0], args[1]
+			id, status := args[0], normalizeStatus(args[1])
 			if !isValidStatus(status) {
 				return fmt.Errorf("invalid status %q; must be one of: pending, active, completed", status)
 			}
@@ -42,6 +42,16 @@ func isValidStatus(s string) bool {
 		}
 	}
 	return false
+}
+
+// normalizeStatus maps accepted aliases to their canonical form. "in_progress"
+// is accepted because LLM agents default to it via Claude Code's TodoWrite
+// vocabulary.
+func normalizeStatus(s string) string {
+	if s == "in_progress" {
+		return taskpkg.StatusActive
+	}
+	return s
 }
 
 func runSet(tasksDir, id, status string) error {
