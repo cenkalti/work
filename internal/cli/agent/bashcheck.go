@@ -18,16 +18,17 @@ const bashClassifyPrompt = `Classify this bash command to decide whether it need
 4. ALWAYS ALLOW (git staging): git add, git stage — these only modify the index and are easily reversible.
 5. ALWAYS ALLOW (build/run): Commands that build or run code — go build, go run, go test, go mod tidy, npm test, npm run, make (without 'clean' or 'install' targets), cargo build, cargo run, cargo test, python script.py, docker build.
 6. ALWAYS ALLOW (kubernetes apply): kubectl apply — standard K8s workflow command.
-7. ASK (git commit): git commit must ALWAYS be 'ask' — the user wants control over when to commit and what the commit message says.
-8. ASK (git checkout without -b): git checkout or git switch to an existing branch — can discard uncommitted changes. Only allow git checkout -b / git switch -c (new branch creation).
-9. ASK (git stash): git stash and git stash pop/apply/drop — ask for all stash operations.
-10. ASK (git pull): git pull modifies the local branch. git fetch is read-only and allowed under rule 1.
-11. ASK (overwrite/upgrade): Commands that overwrite existing resources or upgrade packages — cp over existing files, helm upgrade (including --install), apt upgrade, npm update, go get -u, pip install --upgrade, git push, git rebase, '>' redirect to files (overwrite). '>>' append to files is allowed.
-12. ASK (make clean/install): make clean, make install — these are destructive or system-modifying.
-13. ASK (non-GET HTTP requests): curl/wget with -X POST, -X PUT, -X DELETE, -d, --data, or any flag implying a non-GET request.
-14. ALLOW (test resource deletion): If a delete/destroy/remove command targets something that appears to be a test resource (the name or path contains 'test', 'tmp', 'temp', 'mock', 'fixture', 'fake', 'dummy', 'scratch', 'experimental'), allow it. EXCEPTION: kubectl delete namespace — always ask, even for test namespaces.
-15. ASK (GitHub write operations): Any gh command that creates, modifies, or comments on GitHub resources — gh pr create, gh pr edit, gh pr comment, gh pr merge, gh pr close, gh pr review, gh issue create, gh issue edit, gh issue comment, gh issue close, gh release create. Read-only gh commands (gh pr list, gh pr view, gh issue list, gh issue view, gh pr checks, gh pr diff) are allowed under rule 1.
-16. ASK (all other destructive): Any command that modifies state not covered above — rm, mv, chmod, chown, git reset, git push --force, docker rm, kubectl delete (non-test), package removal.
+7. ALWAYS ALLOW (work task status): task set-status — updates a task's status in the local workspace; trivially reversible with another set-status call.
+8. ASK (git commit): git commit must ALWAYS be 'ask' — the user wants control over when to commit and what the commit message says.
+9. ASK (git checkout without -b): git checkout or git switch to an existing branch — can discard uncommitted changes. Only allow git checkout -b / git switch -c (new branch creation).
+10. ASK (git stash): git stash and git stash pop/apply/drop — ask for all stash operations.
+11. ASK (git pull): git pull modifies the local branch. git fetch is read-only and allowed under rule 1.
+12. ASK (overwrite/upgrade): Commands that overwrite existing resources or upgrade packages — cp over existing files, helm upgrade (including --install), apt upgrade, npm update, go get -u, pip install --upgrade, git push, git rebase, '>' redirect to files (overwrite). '>>' append to files is allowed.
+13. ASK (make clean/install): make clean, make install — these are destructive or system-modifying.
+14. ASK (non-GET HTTP requests): curl/wget with -X POST, -X PUT, -X DELETE, -d, --data, or any flag implying a non-GET request.
+15. ALLOW (test resource deletion): If a delete/destroy/remove command targets something that appears to be a test resource (the name or path contains 'test', 'tmp', 'temp', 'mock', 'fixture', 'fake', 'dummy', 'scratch', 'experimental'), allow it. EXCEPTION: kubectl delete namespace — always ask, even for test namespaces.
+16. ASK (GitHub write operations): Any gh command that creates, modifies, or comments on GitHub resources — gh pr create, gh pr edit, gh pr comment, gh pr merge, gh pr close, gh pr review, gh issue create, gh issue edit, gh issue comment, gh issue close, gh release create. Read-only gh commands (gh pr list, gh pr view, gh issue list, gh issue view, gh pr checks, gh pr diff) are allowed under rule 1.
+17. ASK (all other destructive): Any command that modifies state not covered above — rm, mv, chmod, chown, git reset, git push --force, docker rm, kubectl delete (non-test), package removal.
 
 Compound commands: For pipes (|), chains (&&, ;, ||), and subshells, evaluate ALL components. If any component would be 'ask', the whole command is 'ask'.
 When in doubt, return 'ask'.
