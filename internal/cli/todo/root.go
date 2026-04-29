@@ -92,17 +92,11 @@ func run(cmd *cobra.Command, args []string) error {
 
 	parsed, err := todopkg.Parse(edited)
 	if err != nil {
-		recoverPath := filepath.Join(dir, fmt.Sprintf(".recover-%d.md", time.Now().Unix()))
-		if werr := os.WriteFile(recoverPath, edited, 0o644); werr != nil {
-			return fmt.Errorf("%w (also failed to write recovery file: %v)", err, werr)
-		}
-		fmt.Fprintf(os.Stderr, "todo: %v\n", err)
-		fmt.Fprintf(os.Stderr, "todo: buffer saved to %s\n", recoverPath)
-		os.Exit(1)
+		bailWithRecovery(dir, edited, err)
 	}
 
 	if err := todopkg.Apply(dir, parsed, snapshot, time.Now()); err != nil {
-		return err
+		bailWithRecovery(dir, edited, err)
 	}
 
 	return todopkg.ArchiveSweep(dir, time.Now())
@@ -138,6 +132,20 @@ func launchEditor(path string) error {
 		return fmt.Errorf("editor exited with error: %w", err)
 	}
 	return nil
+}
+
+// bailWithRecovery saves the edited buffer to a .recover-*.md file, prints
+// the error and the recovery path, and exits 1. Used when Parse or Apply
+// rejects the buffer.
+func bailWithRecovery(dir string, edited []byte, cause error) {
+	recoverPath := filepath.Join(dir, fmt.Sprintf(".recover-%d.md", time.Now().Unix()))
+	if werr := os.WriteFile(recoverPath, edited, 0o644); werr != nil {
+		fmt.Fprintf(os.Stderr, "todo: %v (also failed to write recovery file: %v)\n", cause, werr)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stderr, "todo: %v\n", cause)
+	fmt.Fprintf(os.Stderr, "todo: buffer saved to %s\n", recoverPath)
+	os.Exit(1)
 }
 
 // absorbLeftover looks for previously-orphaned edit-*.md tempfiles in the

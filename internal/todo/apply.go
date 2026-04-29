@@ -1,6 +1,8 @@
 package todo
 
 import (
+	"fmt"
+	"os"
 	"reflect"
 	"time"
 )
@@ -10,6 +12,12 @@ import (
 // rewritten, parents' Children lists are recomputed, status transitions
 // update ClosedAt, and _order.json reflects the new top-level order.
 func Apply(dir string, parsed []*ParsedTodo, snapshot map[string]*Todo, now time.Time) error {
+	// Pass 0: validate hand-pinned ids that aren't in the open snapshot don't
+	// collide with archived or trashed entries. Reject before any writes.
+	if err := validateHandPinned(dir, parsed, snapshot); err != nil {
+		return err
+	}
+
 	// Pass 1: assign ids to items without one.
 	if err := assignIDs(dir, parsed); err != nil {
 		return err
@@ -51,6 +59,34 @@ func Apply(dir string, parsed []*ParsedTodo, snapshot map[string]*Todo, now time
 	}
 
 	return nil
+}
+
+func validateHandPinned(dir string, parsed []*ParsedTodo, snapshot map[string]*Todo) error {
+	var walk func(items []*ParsedTodo) error
+	walk = func(items []*ParsedTodo) error {
+		for _, p := range items {
+			if p.ID != "" {
+				if _, inOpen := snapshot[p.ID]; !inOpen {
+					if existsAt(archivePath(dir, p.ID)) {
+						return fmt.Errorf("line %d: id %q collides with an archived item; remove the <!--%s--> stamp to assign a fresh id", p.Line, p.ID, p.ID)
+					}
+					if existsAt(trashPath(dir, p.ID)) {
+						return fmt.Errorf("line %d: id %q collides with a trashed item; remove the <!--%s--> stamp to assign a fresh id", p.Line, p.ID, p.ID)
+					}
+				}
+			}
+			if err := walk(p.Children); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return walk(parsed)
+}
+
+func existsAt(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 func assignIDs(dir string, items []*ParsedTodo) error {
