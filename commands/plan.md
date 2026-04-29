@@ -95,6 +95,22 @@ Best for: many tasks, parallel work, or tasks that benefit from isolation.
 
 If the human chooses **Option A**, work through ready tasks here in dependency order. For each task: run `task show <id>` to read its details, implement it, verify its acceptance criteria, then `task set-status <id> completed`. Do not invoke `/work:execute` — that command is for worktree sessions where a task is assigned to the agent.
 
+Maintain a single shared log at `workspace/log.md`. Append a section per task; never overwrite. Use this structure:
+
+```markdown
+## Task: <task-id>
+
+**Status:** completed | blocked | in_progress
+
+**Progress:**
+- <what was done>
+
+**Notes:**
+- <follow-ups, decisions, blockers>
+```
+
+Append the next task's section below the previous one. The file accumulates across all inline tasks in this planning session.
+
 ## Rules
 
 - One step at a time. Wait for approval before proceeding.
