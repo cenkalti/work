@@ -1,5 +1,3 @@
-<!-- todo: [ ] open  [/] active  [x] done  [-] cancelled  | @ link  & path  | edit and save -->
-
 - [/] Fix kube reconnect bug <!--a3f2b9-->
   @ [issue](https://github.com/example/issue/1)
   & ~/projects/teleport

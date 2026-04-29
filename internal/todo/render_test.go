@@ -80,7 +80,7 @@ func TestRenderIndentationTwoSpacesPerLevel(t *testing.T) {
 		"cccccc": {ID: "cccccc", Title: "grandchild", Status: StatusOpen},
 	}
 	got := string(Render(todos, []string{"aaaaaa"}))
-	if !strings.Contains(got, "\n- [ ] root <!--aaaaaa-->\n") {
+	if !strings.Contains(got, "- [ ] root <!--aaaaaa-->\n") {
 		t.Fatalf("root indentation wrong:\n%s", got)
 	}
 	if !strings.Contains(got, "\n  - [ ] child <!--bbbbbb-->\n") {

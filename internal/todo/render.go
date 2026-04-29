@@ -6,13 +6,9 @@ import (
 	"strings"
 )
 
-const headerComment = "<!-- todo: [ ] open  [/] active  [x] done  [-] cancelled  | @ link  & path  | edit and save -->\n"
-
 // Render produces the editor buffer for the given store snapshot.
 func Render(todos map[string]*Todo, topOrder []string) []byte {
 	var buf bytes.Buffer
-	buf.WriteString(headerComment)
-	buf.WriteString("\n")
 	for _, id := range topOrder {
 		t, ok := todos[id]
 		if !ok {
