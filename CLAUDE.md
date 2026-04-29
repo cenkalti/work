@@ -43,6 +43,16 @@ task rm <id>                 # remove task
 task mcp                     # start MCP server for task creation (hidden)
 ```
 
+### Todo Commands (separate `todo` binary, global list at `~/.work/todos/`)
+
+Higher-level cross-repo todo list, edited as a markdown checklist in `$EDITOR`. JSON-per-item on disk; the buffer is a render, not the source.
+
+```bash
+todo                         # open the todo list in $EDITOR (no subcommands in v1)
+```
+
+Status markers: `[ ]` open, `[/]` active, `[x]` completed, `[-]` cancelled. Items get a 6-char id stored in an HTML comment (`<!--abcdef-->`). Closed items archive after 14 days. Concurrent runs are blocked via `flock` on `~/.work/todos/.lock`. Empty buffer aborts (git-commit-style). On parse error, the buffer is saved to `~/.work/todos/.recover-<unix-ts>.md`.
+
 ### Harness MCP Server (`harness` binary, Karpathy Guidelines)
 
 MCP server that exposes six tools for applying and evaluating the Karpathy coding principles. Requires `ANTHROPIC_API_KEY`.

@@ -14,3 +14,5 @@ eval "$(command task completion zsh)"
 compdef _task task
 eval "$(command agent completion zsh)"
 compdef _agent agent
+eval "$(command todo completion zsh)"
+compdef _todo todo
