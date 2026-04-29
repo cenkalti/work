@@ -58,16 +58,20 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	tmpPath := tmp.Name()
-	if _, err := tmp.Write(original); err != nil {
-		tmp.Close()
-		os.Remove(tmpPath)
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		os.Remove(tmpPath)
-		return err
-	}
+	tmp.Close()
 	defer os.Remove(tmpPath)
+
+	leftover, err := absorbLeftover(dir, tmpPath)
+	if err != nil {
+		return err
+	}
+	initial := original
+	if leftover != nil {
+		initial = leftover
+	}
+	if err := os.WriteFile(tmpPath, initial, 0o644); err != nil {
+		return err
+	}
 
 	if err := launchEditor(tmpPath); err != nil {
 		return err
@@ -134,6 +138,64 @@ func launchEditor(path string) error {
 		return fmt.Errorf("editor exited with error: %w", err)
 	}
 	return nil
+}
+
+// absorbLeftover looks for previously-orphaned edit-*.md tempfiles in the
+// store dir (skipping ourTmp). If found, returns the contents of the most
+// recent one and deletes all leftovers. The lock guarantees no other todo
+// process is touching these files, so any leftover is from a prior crash.
+func absorbLeftover(dir, ourTmp string) ([]byte, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var leftovers []os.DirEntry
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasPrefix(name, "edit-") || !strings.HasSuffix(name, ".md") {
+			continue
+		}
+		if filepath.Join(dir, name) == ourTmp {
+			continue
+		}
+		leftovers = append(leftovers, e)
+	}
+	if len(leftovers) == 0 {
+		return nil, nil
+	}
+
+	type stamped struct {
+		path string
+		mod  time.Time
+	}
+	stamps := make([]stamped, 0, len(leftovers))
+	for _, e := range leftovers {
+		info, err := e.Info()
+		if err != nil {
+			return nil, err
+		}
+		stamps = append(stamps, stamped{path: filepath.Join(dir, e.Name()), mod: info.ModTime()})
+	}
+	mostRecent := stamps[0]
+	for _, s := range stamps[1:] {
+		if s.mod.After(mostRecent.mod) {
+			mostRecent = s
+		}
+	}
+
+	data, err := os.ReadFile(mostRecent.path)
+	if err != nil {
+		return nil, err
+	}
+	for _, s := range stamps {
+		os.Remove(s.path)
+	}
+	fmt.Fprintf(os.Stderr, "todo: recovered leftover buffer from %s (modified %s)\n",
+		filepath.Base(mostRecent.path), mostRecent.mod.Format(time.RFC3339))
+	return data, nil
 }
 
 // isEffectivelyEmpty returns true if the buffer contains nothing but
