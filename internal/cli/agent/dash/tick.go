@@ -3,7 +3,7 @@ package dash
 import (
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 const tickInterval = 1 * time.Second

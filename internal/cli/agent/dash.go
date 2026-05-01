@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/cenkalti/work/internal/cli/agent/dash"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +16,7 @@ func dashCmd() *cobra.Command {
 		Short: "Launch the agent dashboard TUI",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			markDashPane()
-			p := tea.NewProgram(dash.NewModel(), tea.WithAltScreen())
+			p := tea.NewProgram(dash.NewModel())
 			_, err := p.Run()
 			return err
 		},

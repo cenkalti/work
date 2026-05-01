@@ -8,7 +8,7 @@ import (
 	"github.com/cenkalti/work/internal/order"
 	"github.com/cenkalti/work/internal/slot"
 	"github.com/cenkalti/work/internal/wezterm"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -18,7 +18,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Height = msg.Height
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKey(msg)
 
 	case tickMsg:
@@ -43,7 +43,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	s := msg.String()
 	switch s {
 	case "q", "ctrl+c":

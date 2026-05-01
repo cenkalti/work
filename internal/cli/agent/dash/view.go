@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/cenkalti/work/internal/agent"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 var (
@@ -44,7 +45,7 @@ const (
 	colAct    = 8
 )
 
-func (m Model) View() string {
+func (m Model) View() tea.View {
 	var b strings.Builder
 
 	b.WriteString(headerStyle.Render(headerLine()))
@@ -75,7 +76,9 @@ func (m Model) View() string {
 
 	b.WriteString(footerStyle.Render(footerLine(m)))
 	b.WriteByte('\n')
-	return b.String()
+	v := tea.NewView(b.String())
+	v.AltScreen = true
+	return v
 }
 
 func headerLine() string {

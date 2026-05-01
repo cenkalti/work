@@ -4,7 +4,7 @@ package dash
 import (
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // Row is one rendered agent line in the dashboard.

@@ -18,7 +18,7 @@ import (
 	"github.com/cenkalti/work/internal/slot"
 	"github.com/cenkalti/work/internal/task"
 	todopkg "github.com/cenkalti/work/internal/todo"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // claudeSession is a parsed ~/.claude/sessions/<pid>.json.
