@@ -10,8 +10,8 @@
 --   { mods = 'SUPER', key = 'd', action = wezterm.action.EmitEvent('work-toggle-dashboard') }
 --
 -- 'work-toggle-dashboard' toggles between the dashboard and the previously-focused
--- pane. If no dashboard is recorded or its pane is gone, a new window is spawned
--- running `agent dash`.
+-- pane. If no dashboard has been spawned (or its pane is gone), spawns a new
+-- window running `agent dash` and remembers it.
 --
 -- Inside the dashboard TUI:
 --   j / k        move cursor
@@ -25,34 +25,32 @@ local wezterm = require('wezterm')
 
 local M = {}
 
-local home = os.getenv('HOME')
-local dashboard_path = home .. '/.work/dashboard.json'
-local agent_bin = home .. '/go/bin/agent'
+local agent_bin = os.getenv('HOME') .. '/go/bin/agent'
 
--- last_focus is the most recently focused non-dashboard pane id (integer).
--- Used to toggle back when the event fires from the dashboard pane.
+-- Module-level state, kept in WezTerm's Lua memory:
+--   dashboard_pane_id: pane id of the spawned dashboard, or nil if not running.
+--   last_focus:        the most recently focused non-dashboard pane id.
+---@type integer?
+local dashboard_pane_id = nil
 ---@type integer?
 local last_focus = nil
 
-local function read_json(path)
-    local f = io.open(path, 'r')
-    if not f then
-        return nil
-    end
-    local body = f:read('*a')
-    f:close()
-    local ok, parsed = pcall(wezterm.json_parse, body)
+-- safe_get_pane returns the mux pane or nil. wezterm.mux.get_pane throws on
+-- missing panes, so we pcall it.
+---@param pane_id integer
+local function safe_get_pane(pane_id)
+    local ok, p = pcall(wezterm.mux.get_pane, pane_id)
     if not ok then
         return nil
     end
-    return parsed
+    return p
 end
 
 -- activate_pane focuses the pane within its tab and raises the GUI window.
 ---@param pane_id integer
 ---@return boolean
 local function activate_pane(pane_id)
-    local target = wezterm.mux.get_pane(pane_id)
+    local target = safe_get_pane(pane_id)
     if not target then
         return false
     end
@@ -69,11 +67,14 @@ end
 
 function M.setup()
     wezterm.on('work-toggle-dashboard', function(_, pane)
-        local d = read_json(dashboard_path)
         local current = pane:pane_id()
-        local dash_pane = d and tonumber(d.pane_id) or nil
 
-        if dash_pane and current == dash_pane then
+        -- Drop a stale dashboard reference (window was closed externally).
+        if dashboard_pane_id and not safe_get_pane(dashboard_pane_id) then
+            dashboard_pane_id = nil
+        end
+
+        if dashboard_pane_id and current == dashboard_pane_id then
             if last_focus then
                 activate_pane(last_focus)
             end
@@ -81,13 +82,23 @@ function M.setup()
         end
 
         last_focus = current
-        if dash_pane and activate_pane(dash_pane) then
+        if dashboard_pane_id and activate_pane(dashboard_pane_id) then
             return
         end
 
-        wezterm.mux.spawn_window({
+        -- Spawn a new dashboard window and remember its pane id.
+        local _, new_pane, new_window = wezterm.mux.spawn_window({
             args = { agent_bin, 'dash' },
         })
+        if new_pane then
+            dashboard_pane_id = new_pane:pane_id()
+        end
+        if new_window then
+            local gw = new_window:gui_window()
+            if gw then
+                gw:focus()
+            end
+        end
     end)
 end
 
