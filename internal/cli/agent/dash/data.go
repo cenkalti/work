@@ -14,7 +14,9 @@ import (
 	"github.com/cenkalti/work/internal/agent"
 	"github.com/cenkalti/work/internal/git"
 	"github.com/cenkalti/work/internal/order"
+	"github.com/cenkalti/work/internal/paths"
 	"github.com/cenkalti/work/internal/slot"
+	"github.com/cenkalti/work/internal/task"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -186,6 +188,11 @@ func loadRows() ([]Row, error) {
 				row.Dirty = d
 			}
 		}
+		if c, t, ok := taskProgress(r.ProjectRoot, r.Branch); ok {
+			row.HasTask = true
+			row.TasksCompleted = c
+			row.TasksTotal = t
+		}
 		rows = append(rows, row)
 	}
 
@@ -233,6 +240,40 @@ func loadRows() ([]Row, error) {
 	})
 
 	return rows, nil
+}
+
+// taskProgress reports the completed/total task counts for an agent.
+//
+// Parent agent (own task has subtasks): aggregate of subtasks in the agent's
+// own workspace tasks dir.
+// Leaf agent (own task has no subtasks): 0/1 or 1/1 from the agent's own task
+// file, which lives in the parent branch's workspace.
+// No task associated (root branch with no children, or empty branch): returns
+// ok=false so the cell is rendered empty.
+func taskProgress(root, branch string) (completed, total int, ok bool) {
+	if root == "" || branch == "" {
+		return 0, 0, false
+	}
+	if subs, err := task.LoadAll(paths.TasksDir(root, branch)); err == nil && len(subs) > 0 {
+		for _, t := range subs {
+			if t.Status == task.StatusCompleted {
+				completed++
+			}
+		}
+		return completed, len(subs), true
+	}
+	parent := paths.ParentBranch(branch)
+	if parent == "" {
+		return 0, 0, false
+	}
+	t, err := task.Load(paths.TasksDir(root, parent), paths.BranchID(branch))
+	if err != nil {
+		return 0, 0, false
+	}
+	if t.Status == task.StatusCompleted {
+		return 1, 1, true
+	}
+	return 0, 1, true
 }
 
 func sliceEqual(a, b []string) bool {

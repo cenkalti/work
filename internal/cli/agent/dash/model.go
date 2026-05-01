@@ -29,6 +29,9 @@ type Row struct {
 	Crashed            bool
 	Attached           bool
 	Dirty              bool
+	HasTask            bool
+	TasksCompleted     int
+	TasksTotal         int
 }
 
 // Model holds the TUI state.

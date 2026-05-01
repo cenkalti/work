@@ -34,6 +34,7 @@ const (
 	colNotif  = 1
 	colAttach = 1
 	colDirty  = 1
+	colTasks  = 5
 	colStatus = 14
 	colProj   = 12
 	colName   = 20
@@ -77,7 +78,7 @@ func (m Model) View() string {
 }
 
 func headerLine() string {
-	return fmt.Sprintf("%-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %s",
+	return fmt.Sprintf("%-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %s",
 		colSlot, "N",
 		colProj, "PROJECT",
 		colName, "NAME",
@@ -85,6 +86,7 @@ func headerLine() string {
 		colAttach, "C",
 		colDirty, "D",
 		colStatus, "STATUS",
+		colTasks, "TASKS",
 		colTool, "TOOL",
 		colTurn, "TURN",
 		colAct, "LAST",
@@ -113,6 +115,11 @@ func renderRow(r Row, width int, selected bool) string {
 		dirtyS = dirtyStyle.Render("*")
 	}
 
+	tasksS := ""
+	if r.HasTask {
+		tasksS = fmt.Sprintf("%d/%d", r.TasksCompleted, r.TasksTotal)
+	}
+
 	statusText := r.Status
 	if r.Crashed {
 		statusText = "crashed"
@@ -138,7 +145,7 @@ func renderRow(r Row, width int, selected bool) string {
 	}
 
 	// Compute remaining width for prompt.
-	usedWidth := colNotif + 1 + colAttach + 1 + colDirty + 1 + colStatus + 1 + colSlot + 1 + colProj + 1 + colName + 1 + colTool + 1 + colTurn + 1 + colAct + 1
+	usedWidth := colNotif + 1 + colAttach + 1 + colDirty + 1 + colStatus + 1 + colSlot + 1 + colProj + 1 + colName + 1 + colTasks + 1 + colTool + 1 + colTurn + 1 + colAct + 1
 	promptW := max(width-usedWidth, 8)
 	promptS := truncate(strings.Join(strings.Fields(r.LastPromptPreview), " "), promptW)
 
@@ -151,12 +158,13 @@ func renderRow(r Row, width int, selected bool) string {
 		highlight = cursorStyle.Render(highlight)
 	}
 
-	return fmt.Sprintf("%s %s %s %s %s %-*s %-*s %-*s %s",
+	return fmt.Sprintf("%s %s %s %s %s %-*s %-*s %-*s %-*s %s",
 		highlight,
 		notifS,
 		attachS,
 		dirtyS,
 		statusS,
+		colTasks, tasksS,
 		colTool, truncate(r.CurrentTool, colTool),
 		colTurn, turnS,
 		colAct, actS,
