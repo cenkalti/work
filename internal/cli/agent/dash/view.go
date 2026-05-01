@@ -12,23 +12,54 @@ import (
 )
 
 var (
-	headerStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("245"))
-	cellStyle     = lipgloss.NewStyle().PaddingRight(1)
-	cursorStyle   = lipgloss.NewStyle().Reverse(true).PaddingRight(1)
-	dimStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	notifStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9"))
-	attachedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
-	dirtyStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
+	accent  = lipgloss.Color("#7D56F4")
+	accent2 = lipgloss.Color("#43BF6D")
+	muted   = lipgloss.Color("#5C5C5C")
+	cursor  = lipgloss.Color("#3A3A55")
+	soft    = lipgloss.Color("#A29BFE")
+
+	titleStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Background(accent).
+			Padding(0, 2).
+			MarginBottom(1)
+
+	subtitleStyle = lipgloss.NewStyle().
+			Foreground(muted).
+			MarginLeft(1)
+
+	borderStyle = lipgloss.NewStyle().Foreground(muted)
+
+	headerStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(soft).
+			PaddingRight(1)
+
+	cellStyle = lipgloss.NewStyle().PaddingRight(1)
+
+	cursorStyle = lipgloss.NewStyle().
+			Background(cursor).
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Bold(true).
+			PaddingRight(1)
+
+	dimStyle      = lipgloss.NewStyle().Foreground(muted)
+	notifStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FF5F5F"))
+	attachedStyle = lipgloss.NewStyle().Foreground(accent2)
+	dirtyStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD866"))
 
 	statusStyles = map[string]lipgloss.Style{
-		agent.StatusRunning:       lipgloss.NewStyle().Foreground(lipgloss.Color("14")),
-		agent.StatusToolRunning:   lipgloss.NewStyle().Foreground(lipgloss.Color("11")),
-		agent.StatusAwaitingInput: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9")),
-		agent.StatusIdle:          lipgloss.NewStyle().Foreground(lipgloss.Color("10")),
-		agent.StatusStopped:       lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
+		agent.StatusRunning:       lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#5FD7FF")),
+		agent.StatusToolRunning:   lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD866")),
+		agent.StatusAwaitingInput: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FF5F87")),
+		agent.StatusIdle:          lipgloss.NewStyle().Foreground(accent2),
+		agent.StatusStopped:       lipgloss.NewStyle().Faint(true).Foreground(muted),
 	}
 
-	footerStyle = lipgloss.NewStyle().Faint(true)
+	footerStyle = lipgloss.NewStyle().Faint(true).Foreground(muted).MarginTop(1)
+	keyStyle    = lipgloss.NewStyle().Bold(true).Foreground(soft)
+	emptyStyle  = lipgloss.NewStyle().Foreground(muted).Italic(true).Padding(0, 2)
 )
 
 const (
@@ -48,39 +79,38 @@ const (
 )
 
 var headers = []string{
-	"N", "PROJECT", "NAME", "!", "C", "D",
+	"#", "PROJECT", "NAME", "!", "C", "D",
 	"STATUS", "TASKS", "TODO", "TOOL", "TURN", "LAST", "PROMPT",
 }
 
 func (m Model) View() tea.View {
+	header := titleStyle.Render("◆ AGENTS")
+	if !m.LastRefresh.IsZero() {
+		header = lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			header,
+			subtitleStyle.Render(fmt.Sprintf("· %d agents · refreshed %s", len(m.Rows), m.LastRefresh.Format("15:04:05"))),
+		)
+	}
+
 	body := m.renderTable()
-
-	var b strings.Builder
-	b.WriteString(body)
-	if !strings.HasSuffix(body, "\n") {
-		b.WriteByte('\n')
-	}
-
 	if len(m.Rows) == 0 {
-		b.WriteString(dimStyle.Render("(no agents — run `agent run` in a worktree to register one)"))
-		b.WriteByte('\n')
+		body = emptyStyle.Render("no agents — run `agent run` in a worktree to register one")
 	}
+
+	footer := footerStyle.Render(footerLine())
+
+	content := lipgloss.JoinVertical(lipgloss.Left, header, body, footer)
 
 	if m.Height > 0 {
-		used := strings.Count(body, "\n") + 1
-		if len(m.Rows) == 0 {
-			used++
-		}
-		footerHeight := 2
-		blank := m.Height - used - footerHeight
-		for range blank {
-			b.WriteByte('\n')
+		used := lipgloss.Height(content)
+		blank := m.Height - used
+		if blank > 0 {
+			content += strings.Repeat("\n", blank)
 		}
 	}
 
-	b.WriteString(footerStyle.Render(footerLine(m)))
-	b.WriteByte('\n')
-	v := tea.NewView(b.String())
+	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
 }
@@ -92,22 +122,19 @@ func (m Model) renderTable() string {
 	}
 
 	t := table.New().
-		Border(lipgloss.HiddenBorder()).
-		BorderTop(false).
-		BorderBottom(false).
-		BorderLeft(false).
-		BorderRight(false).
+		Border(lipgloss.RoundedBorder()).
+		BorderStyle(borderStyle).
 		BorderColumn(false).
 		BorderRow(false).
-		BorderHeader(false).
+		BorderHeader(true).
 		Headers(headers...).
 		Rows(rows...).
 		Wrap(false).
 		StyleFunc(func(row, col int) lipgloss.Style {
 			if row == table.HeaderRow {
-				return headerStyle.PaddingRight(1)
+				return headerStyle
 			}
-			if row == m.Cursor && col <= colName {
+			if row == m.Cursor {
 				return cursorStyle
 			}
 			return cellStyle
@@ -127,7 +154,7 @@ func rowCells(r Row) []string {
 
 	notifS := ""
 	if r.HasNotification {
-		notifS = notifStyle.Render("!")
+		notifS = notifStyle.Render("●")
 	}
 
 	attachS := ""
@@ -137,7 +164,7 @@ func rowCells(r Row) []string {
 
 	dirtyS := ""
 	if r.Dirty {
-		dirtyS = dirtyStyle.Render("*")
+		dirtyS = dirtyStyle.Render("◆")
 	}
 
 	tasksS := ""
@@ -198,13 +225,17 @@ func rowCells(r Row) []string {
 	}
 }
 
-func footerLine(m Model) string {
-	hint := "j/k: nav  J/K: move  enter: jump  1-9: jump  alt+1-9: assign  alt+0: unassign  q: quit"
-	ts := m.LastRefresh.Format("15:04:05")
-	if ts == "00:00:00" {
-		ts = "—"
+func footerLine() string {
+	parts := []string{
+		keyStyle.Render("j/k") + " nav",
+		keyStyle.Render("J/K") + " move",
+		keyStyle.Render("⏎") + " jump",
+		keyStyle.Render("1-9") + " slot",
+		keyStyle.Render("⌥1-9") + " assign",
+		keyStyle.Render("⌥0") + " unassign",
+		keyStyle.Render("q") + " quit",
 	}
-	return fmt.Sprintf("%s    last refresh: %s", hint, ts)
+	return strings.Join(parts, "  ·  ")
 }
 
 func fmtDuration(d time.Duration) string {
