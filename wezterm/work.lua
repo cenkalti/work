@@ -88,6 +88,7 @@ function M.setup()
         if new_window then
             local gw = new_window:gui_window()
             if gw then
+                gw:maximize()
                 gw:focus()
             end
         end
