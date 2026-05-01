@@ -29,7 +29,7 @@ var (
 
 // Column widths. The last column (prompt) takes the remainder.
 const (
-	colSlot   = 4
+	colSlot   = 1
 	colNotif  = 1
 	colAttach = 1
 	colStatus = 14
@@ -76,7 +76,7 @@ func (m Model) View() string {
 
 func headerLine() string {
 	return fmt.Sprintf("%-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %s",
-		colSlot, "SLOT",
+		colSlot, "N",
 		colProj, "PROJECT",
 		colName, "NAME",
 		colNotif, "!",
