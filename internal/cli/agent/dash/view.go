@@ -93,7 +93,7 @@ func headerLine() string {
 }
 
 func renderRow(r Row, width int, selected bool) string {
-	slotS := "-"
+	slotS := ""
 	if r.HasSlot {
 		slotS = fmt.Sprintf("%d", r.Slot)
 	}
