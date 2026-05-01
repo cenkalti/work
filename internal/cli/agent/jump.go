@@ -1,17 +1,14 @@
 package agent
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/wezterm"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +36,19 @@ func jumpCmd() *cobra.Command {
 			if paneID < 0 {
 				return fmt.Errorf("no claude pane found for %s", args[0])
 			}
-			return activateWezTerm(tabID, paneID, tty)
+			if err := wezterm.ActivateTab(tabID); err != nil {
+				return err
+			}
+			if err := wezterm.ActivatePane(paneID); err != nil {
+				return err
+			}
+			if tty != "" {
+				wezterm.WriteAgentJump(tty)
+			}
+			if self := os.Getenv("WEZTERM_PANE"); self != "" && self != fmt.Sprint(paneID) {
+				_ = exec.Command(wezterm.Path(), "cli", "kill-pane", "--pane-id", self).Run()
+			}
+			return nil
 		},
 	}
 }
@@ -62,33 +71,12 @@ func resolveAgentPath(id string) (string, error) {
 	return resolved, nil
 }
 
-type wezPane struct {
-	TabID   int    `json:"tab_id"`
-	PaneID  int    `json:"pane_id"`
-	CWD     string `json:"cwd"`
-	TTYName string `json:"tty_name"`
-}
-
-func wezTermPath() string {
-	if p, err := exec.LookPath("wezterm"); err == nil {
-		return p
-	}
-	for _, p := range []string{"/opt/homebrew/bin/wezterm", "/usr/local/bin/wezterm", "/Applications/WezTerm.app/Contents/MacOS/wezterm"} {
-		if _, err := os.Stat(p); err == nil {
-			return p
-		}
-	}
-	return "wezterm"
-}
-
+// findClaudePane returns the tab/pane/tty of the WezTerm pane running claude
+// in the given worktree path. paneID is -1 if no match.
 func findClaudePane(path string) (int, int, string, error) {
-	out, err := exec.Command(wezTermPath(), "cli", "list", "--format", "json").Output()
+	panes, err := wezterm.ListPanes()
 	if err != nil {
-		return -1, -1, "", fmt.Errorf("wezterm cli list: %w", err)
-	}
-	var panes []wezPane
-	if err := json.Unmarshal(out, &panes); err != nil {
-		return -1, -1, "", fmt.Errorf("parsing wezterm output: %w", err)
+		return -1, -1, "", err
 	}
 	claudeTTYs := runningClaudeTTYs()
 	for _, p := range panes {
@@ -125,31 +113,4 @@ func runningClaudeTTYs() map[string]struct{} {
 		ttys["/dev/"+tty] = struct{}{}
 	}
 	return ttys
-}
-
-func activateWezTerm(tabID, paneID int, tty string) error {
-	if err := exec.Command(wezTermPath(), "cli", "activate-tab", "--tab-id", fmt.Sprint(tabID)).Run(); err != nil {
-		return fmt.Errorf("activate-tab: %w", err)
-	}
-	if err := exec.Command(wezTermPath(), "cli", "activate-pane", "--pane-id", fmt.Sprint(paneID)).Run(); err != nil {
-		return fmt.Errorf("activate-pane: %w", err)
-	}
-	if tty != "" {
-		f, err := os.OpenFile(tty, os.O_WRONLY, 0)
-		if err != nil {
-			return fmt.Errorf("open %s: %w", tty, err)
-		}
-		val := base64.StdEncoding.EncodeToString([]byte(strconv.FormatInt(time.Now().UnixNano(), 10)))
-		_, err = fmt.Fprintf(f, "\x1b]1337;SetUserVar=agent_jump=%s\x07", val)
-		if closeErr := f.Close(); err == nil {
-			err = closeErr
-		}
-		if err != nil {
-			return err
-		}
-	}
-	if self := os.Getenv("WEZTERM_PANE"); self != "" && self != fmt.Sprint(paneID) {
-		_ = exec.Command(wezTermPath(), "cli", "kill-pane", "--pane-id", self).Run()
-	}
-	return nil
 }

@@ -10,6 +10,7 @@
     "PermissionRequest": [{ "hooks": [{ "type": "command", "command": "agent hook" }] }],
     "Elicitation":       [{ "hooks": [{ "type": "command", "command": "agent hook" }] }],
     "PostToolUse": [
+      { "hooks": [{ "type": "command", "command": "agent hook" }] },
       { "matcher": "Write|Edit", "hooks": [{ "type": "command", "command": "agent hook validate-html" }] }
     ]
   }

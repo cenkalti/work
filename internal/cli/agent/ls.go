@@ -3,12 +3,11 @@ package agent
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/cenkalti/work/internal/agent"
-	"github.com/cenkalti/work/internal/git"
-	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/slot"
 	"github.com/spf13/cobra"
 )
 
@@ -25,12 +24,16 @@ func psCmd() *cobra.Command {
 		Use:   "ps",
 		Short: "List agents across all projects",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			names, err := listAgents(opts)
+			recs, err := listAgentRecords(opts)
 			if err != nil {
 				return err
 			}
-			for _, name := range names {
-				fmt.Println(name)
+			slots, _ := slot.Read()
+			if isTerminal(os.Stdout) {
+				return printAgentTable(os.Stdout, recs, slots)
+			}
+			for _, r := range recs {
+				fmt.Println(agentHandle(r))
 			}
 			return nil
 		},
@@ -43,70 +46,74 @@ func psCmd() *cobra.Command {
 	return cmd
 }
 
+// listAgents returns identifiers in "project/branch" form for tab completion.
 func listAgents(opts listOpts) ([]string, error) {
+	recs, err := listAgentRecords(opts)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(recs))
+	for _, r := range recs {
+		out = append(out, agentHandle(r))
+	}
+	return out, nil
+}
+
+// agentHandle is the CLI handle used by `agent jump` and similar commands.
+// It uses project/branch (or project for root agents) for back-compat.
+func agentHandle(r *agent.Record) string {
+	if r.Branch == "" {
+		return r.Project
+	}
+	return r.Project + "/" + r.Branch
+}
+
+func listAgentRecords(opts listOpts) ([]*agent.Record, error) {
+	all, err := agent.List()
+	if err != nil {
+		return nil, err
+	}
+
 	var sessionIDs map[string]struct{}
 	if !opts.all {
 		sessionIDs = agent.RunningSessionIDs()
 	}
 
-	projectsDir, err := paths.ProjectsDir()
-	if err != nil {
-		return nil, err
-	}
-	entries, err := os.ReadDir(projectsDir)
-	if err != nil {
-		return nil, err
-	}
-	var names []string
-	for _, entry := range entries {
-		if !entry.IsDir() {
+	out := make([]*agent.Record, 0, len(all))
+	for _, r := range all {
+		if !opts.all {
+			if _, ok := sessionIDs[strings.ToLower(r.CurrentSessionID)]; !ok {
+				continue
+			}
+		}
+		if opts.running && r.Status != agent.StatusRunning && r.Status != agent.StatusToolRunning {
 			continue
 		}
-		projectPath := filepath.Join(projectsDir, entry.Name())
-		worktrees, err := git.ListWorktrees(projectPath)
-		if err != nil {
+		if opts.idle && r.Status != agent.StatusIdle && r.Status != agent.StatusAwaitingInput {
 			continue
 		}
-		for _, wt := range worktrees {
-			state, err := agent.Read(wt)
-			if err != nil {
-				continue
-			}
-
-			if !opts.all {
-				if _, ok := sessionIDs[strings.ToLower(state.ID)]; !ok {
-					continue
-				}
-			}
-			if opts.running && state.Status != agent.StatusRunning {
-				continue
-			}
-			if opts.idle && state.Status != agent.StatusIdle {
-				continue
-			}
-
-			name := nameForWorktree(entry.Name(), projectPath, wt)
-			if name == "" {
-				continue
-			}
-			names = append(names, name)
-		}
+		out = append(out, r)
 	}
-	return names, nil
+	return out, nil
 }
 
-func nameForWorktree(project, projectPath, wt string) string {
-	if wt == projectPath {
-		return project
+func printAgentTable(w *os.File, recs []*agent.Record, slots slot.Map) error {
+	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	defer tw.Flush()
+	fmt.Fprintln(tw, "SLOT\tPROJECT\tNAME\tSTATUS\tBRANCH")
+	for _, r := range recs {
+		slotStr := "-"
+		for k, v := range slots {
+			if v == r.ID {
+				slotStr = fmt.Sprint(k)
+				break
+			}
+		}
+		branch := r.Branch
+		if branch == "" {
+			branch = "."
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", slotStr, r.Project, r.Name, r.Status, branch)
 	}
-	wtRoot := filepath.Join(projectPath, ".work", "tree")
-	wtRootResolved, err := filepath.EvalSymlinks(wtRoot)
-	if err != nil {
-		return ""
-	}
-	prefix := wtRootResolved + string(filepath.Separator)
-	if name, ok := strings.CutPrefix(wt, prefix); ok {
-		return project + "/" + name
-	}
-	return ""
+	return nil
 }

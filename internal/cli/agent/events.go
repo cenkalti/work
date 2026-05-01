@@ -2,8 +2,10 @@ package agent
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,10 +17,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const promptPreviewLen = 120
+
 type hookPayload struct {
 	HookEventName string `json:"hook_event_name"`
 	SessionID     string `json:"session_id"`
 	ToolName      string `json:"tool_name"`
+	Prompt        string `json:"prompt"`
 	ToolInput     struct {
 		Command string `json:"command"`
 	} `json:"tool_input"`
@@ -42,13 +47,15 @@ func hookCmd() *cobra.Command {
 			case "SessionStart":
 				return handleSessionStart(&p)
 			case "SessionEnd":
-				return handleSessionEnd()
+				return handleSessionEnd(&p)
 			case "PreToolUse":
 				return handlePreToolUse(&p)
+			case "PostToolUse":
+				return handlePostToolUse(&p)
 			case "UserPromptSubmit":
-				return handleUserPromptSubmit()
+				return handleUserPromptSubmit(&p)
 			case "Stop", "StopFailure", "PermissionRequest", "Elicitation":
-				return handleStop()
+				return handleStop(&p)
 			case "Notification":
 				return handleNotification(&p)
 			}
@@ -59,19 +66,30 @@ func hookCmd() *cobra.Command {
 	return root
 }
 
+// updateRecord finds the agent by session id and applies mutate. Missing record
+// is a silent no-op.
+func updateRecord(sessionID string, mutate func(*agentpkg.Record)) error {
+	rec, err := agentpkg.FindBySession(sessionID)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	mutate(rec)
+	rec.UpdatedAt = time.Now().UTC()
+	return agentpkg.Write(rec)
+}
+
 func handleSessionStart(p *hookPayload) error {
 	if p.SessionID == "" {
 		return fmt.Errorf("missing session_id")
 	}
-	existing, err := agentpkg.Read(".")
-	if err == nil && existing.ID != p.SessionID && existing.Status != agentpkg.StatusEnded {
-		if agentpkg.IsSessionRunning(existing.ID) {
-			return fmt.Errorf("another session is already running: %s", existing.ID)
-		}
-	}
-	if err := agentpkg.Write(".", &agentpkg.State{
-		ID:     p.SessionID,
-		Status: agentpkg.StatusIdle,
+	now := time.Now().UTC()
+	if err := updateRecord(p.SessionID, func(r *agentpkg.Record) {
+		r.Status = agentpkg.StatusIdle
+		r.StartedAt = now
+		r.LastActivity = now
 	}); err != nil {
 		return err
 	}
@@ -85,40 +103,78 @@ func handleSessionStart(p *hookPayload) error {
 	return printTaskContext(loc.RootRepo, loc.Branch)
 }
 
-func handleSessionEnd() error {
-	clearInbox()
-	existing, err := agentpkg.Read(".")
-	if err != nil {
-		return nil
-	}
-	existing.Status = agentpkg.StatusEnded
-	return agentpkg.Write(".", existing)
+func handleSessionEnd(p *hookPayload) error {
+	clearInbox(p.SessionID)
+	now := time.Now().UTC()
+	return updateRecord(p.SessionID, func(r *agentpkg.Record) {
+		r.Status = agentpkg.StatusStopped
+		r.CurrentTool = ""
+		r.TurnStartedAt = time.Time{}
+		r.NotificationCount = 0
+		r.LastActivity = now
+	})
 }
 
 func handlePreToolUse(p *hookPayload) error {
-	// Elicitation responses don't fire a hook, so PreToolUse is the first
-	// signal we get that Claude has resumed working after a prompt.
-	setAgentStatus(agentpkg.StatusRunning)
-	clearInbox()
+	now := time.Now().UTC()
+	if err := updateRecord(p.SessionID, func(r *agentpkg.Record) {
+		r.Status = agentpkg.StatusToolRunning
+		r.CurrentTool = p.ToolName
+		r.LastActivity = now
+	}); err != nil {
+		return err
+	}
+	clearInbox(p.SessionID)
 	if p.ToolName == "Bash" {
 		return runBashCheck(p.ToolInput.Command, os.Stdout)
 	}
 	return nil
 }
 
-func handleUserPromptSubmit() error {
-	setAgentStatus(agentpkg.StatusRunning)
-	clearInbox()
+func handlePostToolUse(p *hookPayload) error {
+	now := time.Now().UTC()
+	return updateRecord(p.SessionID, func(r *agentpkg.Record) {
+		r.Status = agentpkg.StatusRunning
+		r.CurrentTool = ""
+		r.LastActivity = now
+	})
+}
+
+func handleUserPromptSubmit(p *hookPayload) error {
+	now := time.Now().UTC()
+	if err := updateRecord(p.SessionID, func(r *agentpkg.Record) {
+		r.Status = agentpkg.StatusRunning
+		r.LastPromptPreview = truncatePrompt(p.Prompt, promptPreviewLen)
+		r.MessageCount++
+		r.NotificationCount = 0
+		r.TurnStartedAt = now
+		r.LastActivity = now
+	}); err != nil {
+		return err
+	}
+	clearInbox(p.SessionID)
 	return nil
 }
 
-func handleStop() error {
-	setAgentStatus(agentpkg.StatusIdle)
-	return nil
+func handleStop(p *hookPayload) error {
+	now := time.Now().UTC()
+	return updateRecord(p.SessionID, func(r *agentpkg.Record) {
+		r.Status = agentpkg.StatusIdle
+		r.CurrentTool = ""
+		r.TurnStartedAt = time.Time{}
+		r.LastActivity = now
+	})
 }
 
 func handleNotification(p *hookPayload) error {
-	setAgentStatus(agentpkg.StatusIdle)
+	now := time.Now().UTC()
+	if err := updateRecord(p.SessionID, func(r *agentpkg.Record) {
+		r.Status = agentpkg.StatusAwaitingInput
+		r.NotificationCount++
+		r.LastActivity = now
+	}); err != nil {
+		return err
+	}
 	loc, err := location.Detect()
 	if err != nil {
 		return err
@@ -149,19 +205,18 @@ func handleNotification(p *hookPayload) error {
 	})
 }
 
-func setAgentStatus(status string) {
-	existing, err := agentpkg.Read(".")
-	if err != nil {
+func clearInbox(sessionID string) {
+	if sessionID == "" {
 		return
 	}
-	existing.Status = status
-	_ = agentpkg.Write(".", existing)
+	_ = inbox.Delete(sessionID)
 }
 
-func clearInbox() {
-	state, err := agentpkg.Read(".")
-	if err != nil {
-		return
+func truncatePrompt(s string, n int) string {
+	s = strings.TrimSpace(s)
+	if len(s) <= n {
+		return s
 	}
-	_ = inbox.Delete(state.ID)
+	return s[:n-1] + "…"
 }
+

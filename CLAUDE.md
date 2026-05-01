@@ -161,13 +161,15 @@ Work is a multi-task orchestrator for Claude Code. It decomposes plans into task
 - **`internal/paths/`** — Path construction helpers. `ParentBranch`/`BranchID` split dot-notation branches.
 - **`internal/task/`** — Task data model (ID, summary, depends_on, status, files, description, acceptance, context). Tasks are JSON files in parent workspaces.
 - **`internal/session/`** — Worktree and workspace setup. Creates worktree, workspace directory, and symlinks.
-- **`internal/agent/`** — Agent state management (read/write `.agent` files, detect running sessions).
+- **`internal/agent/`** — Agent registry. Records live at `~/.work/agents/<uuid>.json` (one file per agent). Provides Read/Write/List, FindByWorktree, FindBySession, plus process-table helpers for live-session detection.
+- **`internal/slot/`** — Slot map at `~/.work/slots.json`. Maps slot index 1..9 to agent UUID. The dashboard TUI is the writer.
+- **`internal/wezterm/`** — WezTerm CLI wrapper: `Path`, `ListPanes`, `FindPaneByID`, `ActivatePane` (with cross-window focus via the `agent_jump` user-var trick).
 - **`internal/git/`** — Git worktree creation/removal and branch helpers.
 - **`internal/mcp/`** — MCP server implementation exposing `create_task` tool so Claude can create subtasks during planning.
 
 ### Task lifecycle
 
-`work mk <name>` → creates git worktree + branch → creates workspace → symlinks `workspace/`. Then `agent run` starts or resumes a claude session in the worktree. On session start, the `SessionStart` hook calls `agent hook context`, which injects task details into the conversation.
+`work mk <name>` → creates git worktree + branch → creates workspace → symlinks `workspace/`. Then `agent run` starts or resumes a claude session in the worktree, looks up or creates the agent record at `~/.work/agents/<uuid>.json`, and writes the WezTerm pane id and current session id. Claude Code hooks (`SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Notification`, `Stop`, `SessionEnd`) all dispatch through `agent hook`, which finds the record by session id and updates lifecycle/status fields.
 
 ## Slash Commands
 

@@ -2,48 +2,195 @@ package agent
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
-
-const FileName = ".agent"
 
 const (
-	StatusRunning = "running"
-	StatusIdle    = "idle"
-	StatusEnded   = "ended"
+	StatusRunning       = "running"
+	StatusIdle          = "idle"
+	StatusToolRunning   = "tool_running"
+	StatusAwaitingInput = "awaiting_input"
+	StatusStopped       = "stopped"
 )
 
-type State struct {
-	ID     string `json:"id"`
-	Status string `json:"status"`
+// Record is the central agent record stored at ~/.work/agents/<id>.json.
+type Record struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+
+	Project      string `json:"project"`
+	ProjectRoot  string `json:"project_root"`
+	TaskID       string `json:"task_id"`
+	Branch       string `json:"branch"`
+	WorktreePath string `json:"worktree_path"`
+
+	PaneID           string `json:"pane_id,omitempty"`
+	CurrentSessionID string `json:"current_session_id,omitempty"`
+
+	Status             string `json:"status"`
+	CurrentTool        string `json:"current_tool,omitempty"`
+	NotificationCount  int    `json:"notification_count,omitempty"`
+	MessageCount       int    `json:"message_count,omitempty"`
+	LastPromptPreview  string `json:"last_prompt_preview,omitempty"`
+
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	StartedAt     time.Time `json:"started_at,omitzero"`
+	LastActivity  time.Time `json:"last_activity,omitzero"`
+	TurnStartedAt time.Time `json:"turn_started_at,omitzero"`
 }
 
-func FilePath(dir string) string {
-	return filepath.Join(dir, FileName)
+// Dir returns the central agents directory: ~/.work/agents/.
+func Dir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".work", "agents"), nil
 }
 
-func Read(dir string) (*State, error) {
-	data, err := os.ReadFile(FilePath(dir))
+// Path returns the full path to an agent record by ID.
+func Path(id string) (string, error) {
+	dir, err := Dir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, id+".json"), nil
+}
+
+// Read returns the agent record with the given ID.
+func Read(id string) (*Record, error) {
+	p, err := Path(id)
 	if err != nil {
 		return nil, err
 	}
-	var s State
-	if err := json.Unmarshal(data, &s); err != nil {
+	data, err := os.ReadFile(p)
+	if err != nil {
 		return nil, err
 	}
-	return &s, nil
+	var r Record
+	if err := json.Unmarshal(data, &r); err != nil {
+		return nil, fmt.Errorf("parsing %s: %w", p, err)
+	}
+	return &r, nil
 }
 
-func Write(dir string, s *State) error {
-	data, err := json.Marshal(s)
+// Write atomically writes the agent record. The directory is created if missing.
+func Write(r *Record) error {
+	if r == nil || r.ID == "" {
+		return errors.New("agent.Write: record id is empty")
+	}
+	dir, err := Dir()
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(FilePath(dir), data, 0644)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	final := filepath.Join(dir, r.ID+".json")
+	data, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(dir, "."+r.ID+".*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		os.Remove(tmpPath)
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpPath)
+		return err
+	}
+	return os.Rename(tmpPath, final)
+}
+
+// Delete removes the agent record file. Missing is not an error.
+func Delete(id string) error {
+	p, err := Path(id)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(p); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return nil
+}
+
+// List returns every agent record under ~/.work/agents/. Returns an empty slice
+// if the directory does not exist.
+func List() ([]*Record, error) {
+	dir, err := Dir()
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var out []*Record
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		// skip our atomic-rename tempfiles
+		if strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
+		id := strings.TrimSuffix(e.Name(), ".json")
+		r, err := Read(id)
+		if err != nil {
+			// tolerate a single bad file; skip it
+			continue
+		}
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+// FindByWorktree returns the record with WorktreePath == path, or fs.ErrNotExist.
+func FindByWorktree(path string) (*Record, error) {
+	all, err := List()
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range all {
+		if r.WorktreePath == path {
+			return r, nil
+		}
+	}
+	return nil, fs.ErrNotExist
+}
+
+// FindBySession returns the record with CurrentSessionID == sessionID, or fs.ErrNotExist.
+func FindBySession(sessionID string) (*Record, error) {
+	if sessionID == "" {
+		return nil, fs.ErrNotExist
+	}
+	all, err := List()
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range all {
+		if r.CurrentSessionID == sessionID {
+			return r, nil
+		}
+	}
+	return nil, fs.ErrNotExist
 }
 
 // IsSessionRunning checks if a claude process with the given session ID is running.
