@@ -106,6 +106,21 @@ func ActivateTab(tabID int) error {
 	return nil
 }
 
+// SpawnNewWindow spawns a new WezTerm window with cwd and the given command.
+// Empty cwd means "use the default".
+func SpawnNewWindow(cwd string, args ...string) error {
+	a := []string{"cli", "spawn", "--new-window"}
+	if cwd != "" {
+		a = append(a, "--cwd", cwd)
+	}
+	a = append(a, "--")
+	a = append(a, args...)
+	if err := exec.Command(Path(), a...).Run(); err != nil {
+		return fmt.Errorf("spawn: %w", err)
+	}
+	return nil
+}
+
 // WriteAgentJump writes the OSC SetUserVar(agent_jump=...) escape to the
 // given /dev/tty path. Public so callers that already have a TTY can trigger
 // a window-raise without going through ActivatePane.

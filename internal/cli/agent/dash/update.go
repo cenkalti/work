@@ -94,10 +94,17 @@ func jumpToAgent(uuid string) tea.Cmd {
 	if err != nil {
 		return nil
 	}
-	if rec.PaneID == "" {
+	return func() tea.Msg {
+		// If a pane is recorded and still alive, jump to it.
+		if rec.PaneID != "" {
+			if err := wezterm.ActivatePaneString(rec.PaneID); err == nil {
+				return nil
+			}
+		}
+		// Otherwise spawn a new window in the worktree running `agent run`.
+		_ = agent.SpawnRunWindow(rec.WorktreePath)
 		return nil
 	}
-	return activatePaneCmd(rec.PaneID)
 }
 
 func (m Model) assignSlot(n int) tea.Cmd {
@@ -124,12 +131,3 @@ func (m Model) unassignSlot() tea.Cmd {
 	return loadRowsCmd()
 }
 
-// activatePaneCmd activates the target pane and raises its GUI window via the
-// shared wezterm helper. Errors are silently ignored — a stale pane id is the
-// expected case.
-func activatePaneCmd(paneID string) tea.Cmd {
-	return func() tea.Msg {
-		_ = wezterm.ActivatePaneString(paneID)
-		return nil
-	}
-}
