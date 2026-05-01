@@ -58,6 +58,15 @@ local function activate_pane(pane_id)
 end
 
 function M.setup()
+    -- Maximize the window when an agent pane signals via the agent_maximize
+    -- user var (set by the dashboard when jumping into an agent).
+    wezterm.on('user-var-changed', function(window, _, name, _)
+        if name ~= 'agent_maximize' then
+            return
+        end
+        window:maximize()
+    end)
+
     wezterm.on('work-toggle-dashboard', function(_, pane)
         local current = pane:pane_id()
 

@@ -107,18 +107,31 @@ func ActivateTab(tabID int) error {
 }
 
 // SpawnNewWindow spawns a new WezTerm window with cwd and the given command.
-// Empty cwd means "use the default".
-func SpawnNewWindow(cwd string, args ...string) error {
+// Empty cwd means "use the default". Returns the new pane id.
+func SpawnNewWindow(cwd string, args ...string) (int, error) {
 	a := []string{"cli", "spawn", "--new-window"}
 	if cwd != "" {
 		a = append(a, "--cwd", cwd)
 	}
 	a = append(a, "--")
 	a = append(a, args...)
-	if err := exec.Command(Path(), a...).Run(); err != nil {
-		return fmt.Errorf("spawn: %w", err)
+	out, err := exec.Command(Path(), a...).Output()
+	if err != nil {
+		return 0, fmt.Errorf("spawn: %w", err)
 	}
-	return nil
+	id, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	if err != nil {
+		return 0, fmt.Errorf("spawn: parse pane id: %w", err)
+	}
+	return id, nil
+}
+
+// MaximizePane writes the agent_maximize OSC to the pane's TTY, triggering
+// the work.lua user-var-changed handler that calls gw:maximize().
+func MaximizePane(paneID int) {
+	if p, ok := FindPaneByID(paneID); ok && p.TTYName != "" {
+		writeAgentMaximize(p.TTYName)
+	}
 }
 
 // WriteAgentJump writes the OSC SetUserVar(agent_jump=...) escape to the
@@ -129,6 +142,14 @@ func WriteAgentJump(tty string) {
 }
 
 func writeAgentJump(tty string) {
+	writeUserVar(tty, "agent_jump")
+}
+
+func writeAgentMaximize(tty string) {
+	writeUserVar(tty, "agent_maximize")
+}
+
+func writeUserVar(tty, name string) {
 	if !strings.HasPrefix(tty, "/dev/") {
 		return
 	}
@@ -138,5 +159,5 @@ func writeAgentJump(tty string) {
 	}
 	defer f.Close()
 	val := base64.StdEncoding.EncodeToString([]byte(strconv.FormatInt(time.Now().UnixNano(), 10)))
-	_, _ = fmt.Fprintf(f, "\x1b]1337;SetUserVar=agent_jump=%s\x07", val)
+	_, _ = fmt.Fprintf(f, "\x1b]1337;SetUserVar=%s=%s\x07", name, val)
 }

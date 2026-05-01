@@ -1,6 +1,7 @@
 package dash
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/cenkalti/work/internal/agent"
@@ -103,11 +104,16 @@ func jumpToAgent(uuid string) tea.Cmd {
 		// If a pane is recorded and still alive, jump to it.
 		if rec.PaneID != "" {
 			if err := wezterm.ActivatePaneString(rec.PaneID); err == nil {
+				if id, err := strconv.Atoi(rec.PaneID); err == nil {
+					wezterm.MaximizePane(id)
+				}
 				return nil
 			}
 		}
 		// Otherwise spawn a new window in the worktree running `agent run`.
-		_ = agent.SpawnRunWindow(rec.WorktreePath)
+		if id, err := agent.SpawnRunWindow(rec.WorktreePath); err == nil {
+			wezterm.MaximizePane(id)
+		}
 		return nil
 	}
 }

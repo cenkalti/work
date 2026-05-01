@@ -37,7 +37,8 @@ func jumpCmd() *cobra.Command {
 			if paneID < 0 {
 				// No live claude pane in this worktree; spawn a new window
 				// running `agent run` there.
-				return agentpkg.SpawnRunWindow(path)
+				_, err := agentpkg.SpawnRunWindow(path)
+				return err
 			}
 			if err := wezterm.ActivateTab(tabID); err != nil {
 				return err
