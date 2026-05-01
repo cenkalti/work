@@ -47,8 +47,11 @@ func RemoveWorktree(repo, worktreePath string) error {
 
 // IsDirty reports whether the worktree at path has uncommitted changes
 // (modified, staged, or untracked files). Returns false on any git error.
+//
+// --no-optional-locks skips the index-refresh write so concurrent calls don't
+// contend on the index lock and we avoid an unnecessary syscall.
 func IsDirty(path string) bool {
-	cmd := exec.Command("git", "status", "--porcelain")
+	cmd := exec.Command("git", "--no-optional-locks", "status", "--porcelain")
 	cmd.Dir = path
 	out, err := cmd.Output()
 	if err != nil {
