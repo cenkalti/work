@@ -30,3 +30,22 @@ Environment:
 - `IMAGE_GEN_DEFAULT_DIR` — optional. If set, relative `output_path` values are resolved against this directory. If unset, relative paths are rejected.
 
 Security note: the server runs locally as you and writes to any absolute path the tool receives. Treat `output_path` as trusted; do not expose this MCP to untrusted prompts.
+
+## Dashboard keybindings (WezTerm)
+
+The agent dashboard (`agent dash`) shows every agent across every project on one screen, with quick jumps to any of them.
+
+A WezTerm Lua module ships at [`wezterm/work.lua`](wezterm/work.lua). Wire it from your `wezterm.lua`:
+
+```lua
+package.path = '/path/to/work/wezterm/?.lua;' .. package.path
+require('work').setup()
+```
+
+Then bind any key to the `work-toggle-dashboard` event:
+
+```lua
+{ mods = 'CMD', key = 'd', action = wezterm.action.EmitEvent('work-toggle-dashboard') }
+```
+
+That key toggles between the dashboard and the last agent you were on.

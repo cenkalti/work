@@ -12,14 +12,6 @@
 -- 'work-toggle-dashboard' toggles between the dashboard and the previously-focused
 -- pane. If no dashboard has been spawned (or its pane is gone), spawns a new
 -- window running `agent dash` and remembers it.
---
--- Inside the dashboard TUI:
---   j / k        move cursor
---   enter        jump to the highlighted agent
---   1..9         jump to that slot's agent (no modifier)
---   alt+1..9     assign the highlighted agent to slot N
---   alt+0        unassign the highlighted agent's slot
---   q            quit
 
 local wezterm = require('wezterm')
 
