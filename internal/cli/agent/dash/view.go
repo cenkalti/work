@@ -91,7 +91,17 @@ func (m Model) View() tea.View {
 		noun = "archived"
 	}
 	header := titleStyle.Render(title)
-	if !m.LastRefresh.IsZero() {
+	visible := m.visibleRows()
+	switch {
+	case m.Filtering:
+		header = lipgloss.JoinHorizontal(lipgloss.Top, header, subtitleStyle.Render(m.Filter.View()))
+	case m.Filter.Value() != "":
+		header = lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			header,
+			subtitleStyle.Render(fmt.Sprintf("· filter: %s · %d/%d %s", m.Filter.Value(), len(visible), len(m.Rows), noun)),
+		)
+	case !m.LastRefresh.IsZero():
 		header = lipgloss.JoinHorizontal(
 			lipgloss.Top,
 			header,
@@ -99,16 +109,19 @@ func (m Model) View() tea.View {
 		)
 	}
 
-	body := m.renderTable()
-	if len(m.Rows) == 0 {
-		if m.ShowArchived {
+	body := m.renderTable(visible)
+	if len(visible) == 0 {
+		switch {
+		case m.Filter.Value() != "":
+			body = emptyStyle.Render("no matches")
+		case m.ShowArchived:
 			body = emptyStyle.Render("no archived agents")
-		} else {
+		default:
 			body = emptyStyle.Render("no agents — run `agent run` in a worktree to register one")
 		}
 	}
 
-	footer := footerStyle.Render(footerLine(m.ShowArchived))
+	footer := footerStyle.Render(footerLine(m.ShowArchived, m.Filtering, m.Filter.Value() != ""))
 
 	content := lipgloss.JoinVertical(lipgloss.Left, header, body, footer)
 
@@ -125,9 +138,9 @@ func (m Model) View() tea.View {
 	return v
 }
 
-func (m Model) renderTable() string {
-	rows := make([][]string, 0, len(m.Rows))
-	for _, r := range m.Rows {
+func (m Model) renderTable(visible []Row) string {
+	rows := make([][]string, 0, len(visible))
+	for _, r := range visible {
 		rows = append(rows, rowCells(r))
 	}
 
@@ -235,12 +248,21 @@ func rowCells(r Row) []string {
 	}
 }
 
-func footerLine(showArchived bool) string {
+func footerLine(showArchived, filtering, hasFilter bool) string {
+	if filtering {
+		parts := []string{
+			keyStyle.Render("type") + " filter",
+			keyStyle.Render("⏎") + " jump",
+			keyStyle.Render("esc") + " cancel",
+		}
+		return strings.Join(parts, "  ·  ")
+	}
 	var parts []string
 	if showArchived {
 		parts = []string{
 			keyStyle.Render("j/k") + " nav",
 			keyStyle.Render("⏎") + " jump",
+			keyStyle.Render("/") + " filter",
 			keyStyle.Render("u") + " unarchive",
 			keyStyle.Render("A") + " back",
 			keyStyle.Render("q") + " quit",
@@ -250,6 +272,7 @@ func footerLine(showArchived bool) string {
 			keyStyle.Render("j/k") + " nav",
 			keyStyle.Render("J/K") + " move",
 			keyStyle.Render("⏎") + " jump",
+			keyStyle.Render("/") + " filter",
 			keyStyle.Render("1-9") + " slot",
 			keyStyle.Render("⌥1-9") + " assign",
 			keyStyle.Render("⌥0") + " unassign",
@@ -257,6 +280,9 @@ func footerLine(showArchived bool) string {
 			keyStyle.Render("A") + " archived",
 			keyStyle.Render("q") + " quit",
 		}
+	}
+	if hasFilter {
+		parts = append(parts[:len(parts)-1], keyStyle.Render("esc")+" clear", parts[len(parts)-1])
 	}
 	return strings.Join(parts, "  ·  ")
 }

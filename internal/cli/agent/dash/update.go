@@ -27,9 +27,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case rowsLoadedMsg:
 		m.Rows = []Row(msg)
-		if m.Cursor >= len(m.Rows) {
-			m.Cursor = max(0, len(m.Rows)-1)
-		}
+		m.clampCursor()
 		return m, loadDirtyCmd(m.Rows)
 
 	case dirtyLoadedMsg:
@@ -43,13 +41,52 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *Model) clampCursor() {
+	n := len(m.visibleRows())
+	if m.Cursor >= n {
+		m.Cursor = max(0, n-1)
+	}
+	if m.Cursor < 0 {
+		m.Cursor = 0
+	}
+}
+
 func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	s := msg.String()
+	if m.Filtering {
+		switch s {
+		case "esc":
+			m.Filter.Blur()
+			m.Filter.Reset()
+			m.Filtering = false
+			m.Cursor = 0
+			return m, nil
+		case "enter":
+			m.Filter.Blur()
+			m.Filtering = false
+			return m, m.jumpToCursor()
+		}
+		var cmd tea.Cmd
+		m.Filter, cmd = m.Filter.Update(msg)
+		m.clampCursor()
+		return m, cmd
+	}
+
+	visible := m.visibleRows()
 	switch s {
 	case "q", "ctrl+c":
 		return m, tea.Quit
+	case "/":
+		m.Filtering = true
+		return m, m.Filter.Focus()
+	case "esc":
+		if m.Filter.Value() != "" {
+			m.Filter.Reset()
+			m.Cursor = 0
+		}
+		return m, nil
 	case "j", "down":
-		if m.Cursor+1 < len(m.Rows) {
+		if m.Cursor+1 < len(visible) {
 			m.Cursor++
 		}
 		return m, nil
@@ -107,11 +144,20 @@ func (m Model) jumpToSlot(n int) tea.Cmd {
 	return jumpToAgent(uuid)
 }
 
+func (m Model) cursorAgentID() string {
+	visible := m.visibleRows()
+	if m.Cursor < 0 || m.Cursor >= len(visible) {
+		return ""
+	}
+	return visible[m.Cursor].AgentID
+}
+
 func (m Model) jumpToCursor() tea.Cmd {
-	if m.Cursor < 0 || m.Cursor >= len(m.Rows) {
+	uuid := m.cursorAgentID()
+	if uuid == "" {
 		return nil
 	}
-	return jumpToAgent(m.Rows[m.Cursor].AgentID)
+	return jumpToAgent(uuid)
 }
 
 func jumpToAgent(uuid string) tea.Cmd {
@@ -141,10 +187,7 @@ func jumpToAgent(uuid string) tea.Cmd {
 }
 
 func (m Model) assignSlot(n int) tea.Cmd {
-	if m.Cursor < 0 || m.Cursor >= len(m.Rows) {
-		return nil
-	}
-	uuid := m.Rows[m.Cursor].AgentID
+	uuid := m.cursorAgentID()
 	if uuid == "" {
 		return nil
 	}
@@ -153,8 +196,12 @@ func (m Model) assignSlot(n int) tea.Cmd {
 }
 
 // moveUp swaps the cursor row with the row immediately above it in the user
-// order, then moves the cursor to follow it.
+// order, then moves the cursor to follow it. Disabled while a filter is
+// active, since visible indices do not match the underlying user order.
 func (m Model) moveUp() (tea.Model, tea.Cmd) {
+	if m.Filter.Value() != "" {
+		return m, nil
+	}
 	if m.Cursor <= 0 || m.Cursor >= len(m.Rows) {
 		return m, nil
 	}
@@ -171,6 +218,9 @@ func (m Model) moveUp() (tea.Model, tea.Cmd) {
 // moveDown swaps the cursor row with the row immediately below it in the user
 // order, then moves the cursor to follow it.
 func (m Model) moveDown() (tea.Model, tea.Cmd) {
+	if m.Filter.Value() != "" {
+		return m, nil
+	}
 	if m.Cursor < 0 || m.Cursor+1 >= len(m.Rows) {
 		return m, nil
 	}
@@ -185,10 +235,7 @@ func (m Model) moveDown() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) unassignSlot() tea.Cmd {
-	if m.Cursor < 0 || m.Cursor >= len(m.Rows) {
-		return nil
-	}
-	uuid := m.Rows[m.Cursor].AgentID
+	uuid := m.cursorAgentID()
 	if uuid == "" {
 		return nil
 	}
@@ -197,10 +244,7 @@ func (m Model) unassignSlot() tea.Cmd {
 }
 
 func (m Model) archiveCursor() tea.Cmd {
-	if m.Cursor < 0 || m.Cursor >= len(m.Rows) {
-		return nil
-	}
-	uuid := m.Rows[m.Cursor].AgentID
+	uuid := m.cursorAgentID()
 	if uuid == "" {
 		return nil
 	}
@@ -215,10 +259,7 @@ func (m Model) archiveCursor() tea.Cmd {
 }
 
 func (m Model) unarchiveCursor() tea.Cmd {
-	if m.Cursor < 0 || m.Cursor >= len(m.Rows) {
-		return nil
-	}
-	uuid := m.Rows[m.Cursor].AgentID
+	uuid := m.cursorAgentID()
 	if uuid == "" {
 		return nil
 	}
