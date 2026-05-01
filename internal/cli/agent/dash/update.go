@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/work/internal/agent"
+	"github.com/cenkalti/work/internal/order"
 	"github.com/cenkalti/work/internal/slot"
 	"github.com/cenkalti/work/internal/wezterm"
 	tea "github.com/charmbracelet/bubbletea"
@@ -48,6 +49,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.Cursor--
 		}
 		return m, nil
+	case "J", "shift+down":
+		return m.moveDown()
+	case "K", "shift+up":
+		return m.moveUp()
 	case "enter":
 		return m, m.jumpToCursor()
 	case "alt+0":
@@ -117,6 +122,38 @@ func (m Model) assignSlot(n int) tea.Cmd {
 	}
 	_ = slot.Set(n, uuid)
 	return loadRowsCmd()
+}
+
+// moveUp swaps the cursor row with the row immediately above it in the user
+// order, then moves the cursor to follow it.
+func (m Model) moveUp() (tea.Model, tea.Cmd) {
+	if m.Cursor <= 0 || m.Cursor >= len(m.Rows) {
+		return m, nil
+	}
+	a := m.Rows[m.Cursor].AgentID
+	b := m.Rows[m.Cursor-1].AgentID
+	if changed, _ := order.Swap(a, b); !changed {
+		return m, nil
+	}
+	m.Rows[m.Cursor], m.Rows[m.Cursor-1] = m.Rows[m.Cursor-1], m.Rows[m.Cursor]
+	m.Cursor--
+	return m, loadRowsCmd()
+}
+
+// moveDown swaps the cursor row with the row immediately below it in the user
+// order, then moves the cursor to follow it.
+func (m Model) moveDown() (tea.Model, tea.Cmd) {
+	if m.Cursor < 0 || m.Cursor+1 >= len(m.Rows) {
+		return m, nil
+	}
+	a := m.Rows[m.Cursor].AgentID
+	b := m.Rows[m.Cursor+1].AgentID
+	if changed, _ := order.Swap(a, b); !changed {
+		return m, nil
+	}
+	m.Rows[m.Cursor], m.Rows[m.Cursor+1] = m.Rows[m.Cursor+1], m.Rows[m.Cursor]
+	m.Cursor++
+	return m, loadRowsCmd()
 }
 
 func (m Model) unassignSlot() tea.Cmd {

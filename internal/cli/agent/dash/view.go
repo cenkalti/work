@@ -153,7 +153,7 @@ func renderRow(r Row, width int) string {
 }
 
 func footerLine(m Model) string {
-	hint := "j/k: nav  enter: jump  1-9: jump  alt+1-9: assign  alt+0: unassign  q: quit"
+	hint := "j/k: nav  J/K: move  enter: jump  1-9: jump  alt+1-9: assign  alt+0: unassign  q: quit"
 	ts := m.LastRefresh.Format("15:04:05")
 	if ts == "00:00:00" {
 		ts = "—"

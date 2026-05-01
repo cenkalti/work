@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/work/internal/agent"
+	"github.com/cenkalti/work/internal/order"
 	"github.com/cenkalti/work/internal/slot"
 	"github.com/google/uuid"
 )
@@ -47,12 +48,16 @@ func writeAgent(t *testing.T, name, sessionID string, status string, lastActivit
 func TestLoadRowsSortAndSlot(t *testing.T) {
 	setupTempHome(t)
 
-	old := writeAgent(t, "old", "sess-old", agent.StatusIdle, time.Now().Add(-10*time.Minute))
-	mid := writeAgent(t, "mid", "sess-mid", agent.StatusIdle, time.Now().Add(-5*time.Minute))
-	recent := writeAgent(t, "recent", "sess-recent", agent.StatusIdle, time.Now().Add(-1*time.Minute))
+	a := writeAgent(t, "a", "sess-a", agent.StatusIdle, time.Now().Add(-10*time.Minute))
+	b := writeAgent(t, "b", "sess-b", agent.StatusIdle, time.Now().Add(-5*time.Minute))
+	c := writeAgent(t, "c", "sess-c", agent.StatusIdle, time.Now().Add(-1*time.Minute))
 	pinned := writeAgent(t, "pinned", "sess-pinned", agent.StatusIdle, time.Now().Add(-1*time.Hour))
 
 	if err := slot.Set(2, pinned.ID); err != nil {
+		t.Fatal(err)
+	}
+	// User-defined order for unassigned: c, a, b.
+	if err := order.Write([]string{c.ID, a.ID, b.ID}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -67,15 +72,63 @@ func TestLoadRowsSortAndSlot(t *testing.T) {
 	if rows[0].AgentID != pinned.ID || rows[0].Slot != 2 || !rows[0].HasSlot {
 		t.Errorf("row 0: want pinned in slot 2, got id=%s slot=%d hasSlot=%v", rows[0].AgentID, rows[0].Slot, rows[0].HasSlot)
 	}
-	// then unassigned by last_activity desc: recent, mid, old
-	if rows[1].AgentID != recent.ID {
-		t.Errorf("row 1: want recent, got %s", rows[1].AgentID)
+	// then unassigned in user-defined order: c, a, b.
+	if rows[1].AgentID != c.ID {
+		t.Errorf("row 1: want c, got %s", rows[1].AgentID)
 	}
-	if rows[2].AgentID != mid.ID {
-		t.Errorf("row 2: want mid, got %s", rows[2].AgentID)
+	if rows[2].AgentID != a.ID {
+		t.Errorf("row 2: want a, got %s", rows[2].AgentID)
 	}
-	if rows[3].AgentID != old.ID {
-		t.Errorf("row 3: want old, got %s", rows[3].AgentID)
+	if rows[3].AgentID != b.ID {
+		t.Errorf("row 3: want b, got %s", rows[3].AgentID)
+	}
+}
+
+func TestLoadRowsAppendsNewAgentsToOrder(t *testing.T) {
+	setupTempHome(t)
+
+	a := writeAgent(t, "a", "sess-a", agent.StatusIdle, time.Now())
+	b := writeAgent(t, "b", "sess-b", agent.StatusIdle, time.Now())
+
+	// Seed order with only a; b is a "new" agent and should be appended.
+	if err := order.Write([]string{a.ID}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := loadRows(); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := order.Read()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0] != a.ID || got[1] != b.ID {
+		t.Errorf("expected order [a,b], got %v", got)
+	}
+}
+
+func TestLoadRowsPrunesMissingAgentsFromOrder(t *testing.T) {
+	setupTempHome(t)
+
+	a := writeAgent(t, "a", "sess-a", agent.StatusIdle, time.Now())
+
+	// Seed order with a stale UUID alongside a.
+	stale := "00000000-0000-0000-0000-000000000000"
+	if err := order.Write([]string{stale, a.ID}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := loadRows(); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := order.Read()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0] != a.ID {
+		t.Errorf("expected order [a], got %v", got)
 	}
 }
 

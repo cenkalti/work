@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/work/internal/agent"
+	"github.com/cenkalti/work/internal/order"
 	"github.com/cenkalti/work/internal/slot"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -91,6 +92,35 @@ func loadRows() ([]Row, error) {
 		rows = append(rows, row)
 	}
 
+	// Normalize the user-defined order: prune UUIDs no longer present, append
+	// any newly-seen UUIDs at the end.
+	ord, _ := order.Read()
+	present := make(map[string]bool, len(rows))
+	for _, r := range rows {
+		present[r.AgentID] = true
+	}
+	cleaned := make([]string, 0, len(rows))
+	seen := make(map[string]bool, len(rows))
+	for _, u := range ord {
+		if present[u] && !seen[u] {
+			cleaned = append(cleaned, u)
+			seen[u] = true
+		}
+	}
+	for _, r := range rows {
+		if !seen[r.AgentID] {
+			cleaned = append(cleaned, r.AgentID)
+			seen[r.AgentID] = true
+		}
+	}
+	if !sliceEqual(cleaned, ord) {
+		_ = order.Write(cleaned)
+	}
+	idx := make(map[string]int, len(cleaned))
+	for i, u := range cleaned {
+		idx[u] = i
+	}
+
 	sort.Slice(rows, func(i, j int) bool {
 		ai, aj := rows[i], rows[j]
 		switch {
@@ -101,20 +131,23 @@ func loadRows() ([]Row, error) {
 		case ai.HasSlot && aj.HasSlot:
 			return ai.Slot < aj.Slot
 		}
-		// both unassigned: by last_activity desc
-		switch {
-		case ai.HasLastActivity && !aj.HasLastActivity:
-			return true
-		case !ai.HasLastActivity && aj.HasLastActivity:
-			return false
-		case ai.HasLastActivity && aj.HasLastActivity:
-			return ai.LastActivity.After(aj.LastActivity)
-		}
-		// fallback: by name
-		return strings.ToLower(ai.Name) < strings.ToLower(aj.Name)
+		// both unassigned: by user-defined order
+		return idx[ai.AgentID] < idx[aj.AgentID]
 	})
 
 	return rows, nil
+}
+
+func sliceEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func readClaudeSessions() (map[string]claudeSession, error) {
