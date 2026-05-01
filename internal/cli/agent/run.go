@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -35,7 +36,7 @@ func runCmd() *cobra.Command {
 			rec.UpdatedAt = time.Now().UTC()
 
 			var claudeArgs []string
-			if rec.CurrentSessionID != "" {
+			if rec.CurrentSessionID != "" && claudeSessionExists(rec.WorktreePath, rec.CurrentSessionID) {
 				claudeArgs = []string{"claude", "--resume", rec.CurrentSessionID}
 			} else {
 				rec.CurrentSessionID = uuid.New().String()
@@ -48,6 +49,24 @@ func runCmd() *cobra.Command {
 			return syscall.Exec(claudeBin, claudeArgs, os.Environ())
 		},
 	}
+}
+
+// claudeSessionExists reports whether a Claude Code conversation file exists
+// for the given session in the project directory matching worktreePath.
+// Claude stores conversations at ~/.claude/projects/<encoded-cwd>/<session-id>.jsonl
+// where the encoding replaces "/" with "-".
+func claudeSessionExists(worktreePath, sessionID string) bool {
+	if worktreePath == "" || sessionID == "" {
+		return false
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return false
+	}
+	encoded := strings.ReplaceAll(worktreePath, "/", "-")
+	p := filepath.Join(home, ".claude", "projects", encoded, sessionID+".jsonl")
+	_, err = os.Stat(p)
+	return err == nil
 }
 
 // loadOrCreateAgent returns the agent record for the current worktree, creating
