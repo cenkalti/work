@@ -38,6 +38,24 @@ local function safe_get_pane(pane_id)
     return p
 end
 
+-- find_dashboard_pane scans every window/tab/pane for one tagged with the
+-- agent_role=dash user var (set by `agent dash` on startup). Returns the pane
+-- or nil. Used to recover the dashboard reference after config reloads or
+-- when it was spawned outside the toggle handler.
+local function find_dashboard_pane()
+    for _, win in ipairs(wezterm.mux.all_windows()) do
+        for _, tab in ipairs(win:tabs()) do
+            for _, p in ipairs(tab:panes()) do
+                local vars = p:get_user_vars()
+                if vars and vars.agent_role == 'dash' then
+                    return p
+                end
+            end
+        end
+    end
+    return nil
+end
+
 -- activate_pane focuses the pane within its tab and raises the GUI window.
 ---@param pane_id integer
 ---@return boolean
@@ -70,8 +88,14 @@ function M.setup()
     wezterm.on('work-toggle-dashboard', function(_, pane)
         local current = pane:pane_id()
 
-        -- Drop a stale dashboard reference (window was closed externally).
-        if dashboard_pane_id and not safe_get_pane(dashboard_pane_id) then
+        -- Re-discover the dashboard pane each toggle by scanning for the
+        -- agent_role=dash user var. This survives config reloads and finds
+        -- dashboards spawned outside this handler. Cached id is only used as
+        -- a hint; the scan is authoritative.
+        local existing = find_dashboard_pane()
+        if existing then
+            dashboard_pane_id = existing:pane_id()
+        else
             dashboard_pane_id = nil
         end
 
