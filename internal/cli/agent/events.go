@@ -54,8 +54,10 @@ func hookCmd() *cobra.Command {
 				return handlePostToolUse(&p)
 			case "UserPromptSubmit":
 				return handleUserPromptSubmit(&p)
-			case "Stop", "StopFailure", "PermissionRequest", "Elicitation":
-				return handleStop(&p)
+			case "Stop", "PermissionRequest", "Elicitation":
+				return handleStop(&p, 0)
+			case "StopFailure":
+				return handleStop(&p, 1)
 			case "Notification":
 				return handleNotification(&p)
 			}
@@ -85,6 +87,8 @@ func handleSessionStart(p *hookPayload) error {
 	if p.SessionID == "" {
 		return fmt.Errorf("missing session_id")
 	}
+	writeOSC133("A")
+	writeOSC133("B")
 	now := time.Now().UTC()
 	if err := updateRecord(p.SessionID, func(r *agentpkg.Record) {
 		r.Status = agentpkg.StatusIdle
@@ -141,6 +145,7 @@ func handlePostToolUse(p *hookPayload) error {
 }
 
 func handleUserPromptSubmit(p *hookPayload) error {
+	writeOSC133("C")
 	now := time.Now().UTC()
 	if err := updateRecord(p.SessionID, func(r *agentpkg.Record) {
 		r.Status = agentpkg.StatusRunning
@@ -156,7 +161,10 @@ func handleUserPromptSubmit(p *hookPayload) error {
 	return nil
 }
 
-func handleStop(p *hookPayload) error {
+func handleStop(p *hookPayload, exit int) error {
+	writeOSC133(fmt.Sprintf("D;%d", exit))
+	writeOSC133("A")
+	writeOSC133("B")
 	now := time.Now().UTC()
 	return updateRecord(p.SessionID, func(r *agentpkg.Record) {
 		r.Status = agentpkg.StatusIdle
