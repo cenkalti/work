@@ -203,7 +203,7 @@ func fmtDuration(d time.Duration) string {
 func fmtRelative(t time.Time) string {
 	d := time.Since(t).Truncate(time.Second)
 	if d < time.Minute {
-		return "just now"
+		return "<1m ago"
 	}
 	if d < time.Hour {
 		return fmt.Sprintf("%dm ago", int(d/time.Minute))
