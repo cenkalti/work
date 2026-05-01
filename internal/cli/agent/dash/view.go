@@ -10,10 +10,11 @@ import (
 )
 
 var (
-	headerStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("245"))
-	cursorStyle = lipgloss.NewStyle().Reverse(true)
-	dimStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	notifStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9"))
+	headerStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("245"))
+	cursorStyle   = lipgloss.NewStyle().Reverse(true)
+	dimStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	notifStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9"))
+	attachedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
 
 	statusStyles = map[string]lipgloss.Style{
 		agent.StatusRunning:       lipgloss.NewStyle().Foreground(lipgloss.Color("14")), // cyan
@@ -30,6 +31,7 @@ var (
 const (
 	colSlot   = 4
 	colNotif  = 1
+	colAttach = 1
 	colStatus = 14
 	colProj   = 12
 	colName   = 20
@@ -77,9 +79,10 @@ func (m Model) View() string {
 }
 
 func headerLine() string {
-	return fmt.Sprintf("%-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %s",
+	return fmt.Sprintf("%-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %s",
 		colSlot, "SLOT",
 		colNotif, "!",
+		colAttach, "C",
 		colStatus, "STATUS",
 		colProj, "PROJECT",
 		colName, "NAME",
@@ -99,6 +102,11 @@ func renderRow(r Row, width int) string {
 	notifS := " "
 	if r.HasNotification {
 		notifS = notifStyle.Render("!")
+	}
+
+	attachS := " "
+	if r.Attached {
+		attachS = attachedStyle.Render("●")
 	}
 
 	statusText := r.Status
@@ -126,13 +134,14 @@ func renderRow(r Row, width int) string {
 	}
 
 	// Compute remaining width for prompt.
-	usedWidth := colSlot + 1 + colNotif + 1 + colStatus + 1 + colProj + 1 + colName + 1 + colTool + 1 + colTurn + 1 + colAct + 1
+	usedWidth := colSlot + 1 + colNotif + 1 + colAttach + 1 + colStatus + 1 + colProj + 1 + colName + 1 + colTool + 1 + colTurn + 1 + colAct + 1
 	promptW := max(width-usedWidth, 8)
 	promptS := truncate(strings.Join(strings.Fields(r.LastPromptPreview), " "), promptW)
 
-	return fmt.Sprintf("%-*s %s %s %-*s %-*s %-*s %-*s %-*s %s",
+	return fmt.Sprintf("%-*s %s %s %s %-*s %-*s %-*s %-*s %-*s %s",
 		colSlot, slotS,
 		notifS,
+		attachS,
 		statusS,
 		colProj, truncate(r.Project, colProj),
 		colName, truncate(r.Name, colName),

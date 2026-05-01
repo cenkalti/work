@@ -26,6 +26,7 @@ type Row struct {
 	LastPromptPreview  string
 	NoWorktree         bool
 	Crashed            bool
+	Attached           bool
 }
 
 // Model holds the TUI state.

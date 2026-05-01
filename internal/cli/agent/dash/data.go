@@ -77,6 +77,7 @@ func loadRows() ([]Row, error) {
 		// matching session file is present.
 		if r.CurrentSessionID != "" {
 			_, alive := sessions[r.CurrentSessionID]
+			row.Attached = alive
 			if !alive && (r.Status == agent.StatusRunning || r.Status == agent.StatusToolRunning || r.Status == agent.StatusAwaitingInput) {
 				row.Crashed = true
 			}
