@@ -213,7 +213,7 @@ func clearInbox(sessionID string) {
 }
 
 func truncatePrompt(s string, n int) string {
-	s = strings.TrimSpace(s)
+	s = strings.Join(strings.Fields(s), " ")
 	if len(s) <= n {
 		return s
 	}

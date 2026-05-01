@@ -128,7 +128,7 @@ func renderRow(r Row, width int) string {
 	// Compute remaining width for prompt.
 	usedWidth := colSlot + 1 + colNotif + 1 + colStatus + 1 + colProj + 1 + colName + 1 + colTool + 1 + colTurn + 1 + colAct + 1
 	promptW := max(width-usedWidth, 8)
-	promptS := truncate(r.LastPromptPreview, promptW)
+	promptS := truncate(strings.Join(strings.Fields(r.LastPromptPreview), " "), promptW)
 
 	return fmt.Sprintf("%-*s %s %s %-*s %-*s %-*s %-*s %-*s %s",
 		colSlot, slotS,
