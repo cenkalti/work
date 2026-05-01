@@ -45,6 +45,18 @@ func RemoveWorktree(repo, worktreePath string) error {
 	return nil
 }
 
+// IsDirty reports whether the worktree at path has uncommitted changes
+// (modified, staged, or untracked files). Returns false on any git error.
+func IsDirty(path string) bool {
+	cmd := exec.Command("git", "status", "--porcelain")
+	cmd.Dir = path
+	out, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	return len(out) > 0
+}
+
 // DefaultBranch returns "main" if it exists, otherwise "master".
 func DefaultBranch(repo string) string {
 	cmd := exec.Command("git", "rev-parse", "--verify", "main")

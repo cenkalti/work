@@ -8,9 +8,11 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cenkalti/work/internal/agent"
+	"github.com/cenkalti/work/internal/git"
 	"github.com/cenkalti/work/internal/order"
 	"github.com/cenkalti/work/internal/slot"
 	tea "github.com/charmbracelet/bubbletea"
@@ -25,11 +27,98 @@ type claudeSession struct {
 
 type rowsLoadedMsg []Row
 
+// dirtyLoadedMsg maps agent ID -> dirty state.
+type dirtyLoadedMsg map[string]bool
+
 // loadRowsCmd asynchronously loads rows from disk.
 func loadRowsCmd() tea.Cmd {
 	return func() tea.Msg {
 		rows, _ := loadRows()
 		return rowsLoadedMsg(rows)
+	}
+}
+
+// dirtyTTL is how long a dirty-status result stays valid in the cache before
+// we re-shell out to git for it.
+const dirtyTTL = 10 * time.Second
+
+// dirtyConcurrency caps the number of `git status` processes running at once
+// to avoid CPU spikes when many worktrees expire together.
+const dirtyConcurrency = 2
+
+type dirtyEntry struct {
+	dirty bool
+	at    time.Time
+}
+
+var (
+	dirtyCacheMu sync.Mutex
+	dirtyCache   = map[string]dirtyEntry{}
+)
+
+// dirtyCachePeek returns the last known dirty value for path regardless of
+// freshness. Used to seed rows so the indicator does not blink while a refresh
+// is in flight.
+func dirtyCachePeek(path string) (bool, bool) {
+	dirtyCacheMu.Lock()
+	defer dirtyCacheMu.Unlock()
+	e, ok := dirtyCache[path]
+	return e.dirty, ok
+}
+
+func dirtyCacheFresh(path string) bool {
+	dirtyCacheMu.Lock()
+	defer dirtyCacheMu.Unlock()
+	e, ok := dirtyCache[path]
+	return ok && time.Since(e.at) < dirtyTTL
+}
+
+func dirtyCachePut(path string, dirty bool) {
+	dirtyCacheMu.Lock()
+	defer dirtyCacheMu.Unlock()
+	dirtyCache[path] = dirtyEntry{dirty: dirty, at: time.Now()}
+}
+
+// loadDirtyCmd computes dirty state for rows whose cache entry is missing or
+// stale, throttled to dirtyConcurrency parallel git invocations. Fresh entries
+// are skipped; rows already carry the cached value from loadRows.
+func loadDirtyCmd(rows []Row) tea.Cmd {
+	type entry struct {
+		id, path string
+	}
+	entries := make([]entry, 0, len(rows))
+	for _, r := range rows {
+		if r.NoWorktree || r.WorktreePath == "" {
+			continue
+		}
+		if dirtyCacheFresh(r.WorktreePath) {
+			continue
+		}
+		entries = append(entries, entry{id: r.AgentID, path: r.WorktreePath})
+	}
+	return func() tea.Msg {
+		result := make(map[string]bool, len(entries))
+		if len(entries) == 0 {
+			return dirtyLoadedMsg(result)
+		}
+		var mu sync.Mutex
+		var wg sync.WaitGroup
+		sem := make(chan struct{}, dirtyConcurrency)
+		for _, e := range entries {
+			wg.Add(1)
+			go func(id, path string) {
+				defer wg.Done()
+				sem <- struct{}{}
+				defer func() { <-sem }()
+				d := git.IsDirty(path)
+				dirtyCachePut(path, d)
+				mu.Lock()
+				result[id] = d
+				mu.Unlock()
+			}(e.id, e.path)
+		}
+		wg.Wait()
+		return dirtyLoadedMsg(result)
 	}
 }
 
@@ -51,6 +140,7 @@ func loadRows() ([]Row, error) {
 	for _, r := range recs {
 		row := Row{
 			AgentID:           r.ID,
+			WorktreePath:      r.WorktreePath,
 			Status:            r.Status,
 			Project:           r.Project,
 			Name:              r.Name,
@@ -87,6 +177,13 @@ func loadRows() ([]Row, error) {
 		if r.WorktreePath != "" {
 			if _, err := os.Stat(r.WorktreePath); errors.Is(err, fs.ErrNotExist) {
 				row.NoWorktree = true
+			}
+		}
+		// Seed dirty from the last cached value (regardless of freshness) so
+		// the indicator does not blink while loadDirtyCmd refreshes it.
+		if !row.NoWorktree && row.WorktreePath != "" {
+			if d, ok := dirtyCachePeek(row.WorktreePath); ok {
+				row.Dirty = d
 			}
 		}
 		rows = append(rows, row)

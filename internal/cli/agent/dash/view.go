@@ -15,6 +15,7 @@ var (
 	dimStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 	notifStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9"))
 	attachedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
+	dirtyStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
 
 	statusStyles = map[string]lipgloss.Style{
 		agent.StatusRunning:       lipgloss.NewStyle().Foreground(lipgloss.Color("14")), // cyan
@@ -32,6 +33,7 @@ const (
 	colSlot   = 1
 	colNotif  = 1
 	colAttach = 1
+	colDirty  = 1
 	colStatus = 14
 	colProj   = 12
 	colName   = 20
@@ -75,12 +77,13 @@ func (m Model) View() string {
 }
 
 func headerLine() string {
-	return fmt.Sprintf("%-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %s",
+	return fmt.Sprintf("%-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %s",
 		colSlot, "N",
 		colProj, "PROJECT",
 		colName, "NAME",
 		colNotif, "!",
 		colAttach, "C",
+		colDirty, "D",
 		colStatus, "STATUS",
 		colTool, "TOOL",
 		colTurn, "TURN",
@@ -103,6 +106,11 @@ func renderRow(r Row, width int, selected bool) string {
 	attachS := " "
 	if r.Attached {
 		attachS = attachedStyle.Render("●")
+	}
+
+	dirtyS := " "
+	if r.Dirty {
+		dirtyS = dirtyStyle.Render("*")
 	}
 
 	statusText := r.Status
@@ -130,7 +138,7 @@ func renderRow(r Row, width int, selected bool) string {
 	}
 
 	// Compute remaining width for prompt.
-	usedWidth := colNotif + 1 + colAttach + 1 + colStatus + 1 + colSlot + 1 + colProj + 1 + colName + 1 + colTool + 1 + colTurn + 1 + colAct + 1
+	usedWidth := colNotif + 1 + colAttach + 1 + colDirty + 1 + colStatus + 1 + colSlot + 1 + colProj + 1 + colName + 1 + colTool + 1 + colTurn + 1 + colAct + 1
 	promptW := max(width-usedWidth, 8)
 	promptS := truncate(strings.Join(strings.Fields(r.LastPromptPreview), " "), promptW)
 
@@ -143,10 +151,11 @@ func renderRow(r Row, width int, selected bool) string {
 		highlight = cursorStyle.Render(highlight)
 	}
 
-	return fmt.Sprintf("%s %s %s %s %-*s %-*s %-*s %s",
+	return fmt.Sprintf("%s %s %s %s %s %-*s %-*s %-*s %s",
 		highlight,
 		notifS,
 		attachS,
+		dirtyS,
 		statusS,
 		colTool, truncate(r.CurrentTool, colTool),
 		colTurn, turnS,

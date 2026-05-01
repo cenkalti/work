@@ -12,6 +12,7 @@ import (
 // Populated in data.go. Empty during the skeleton.
 type Row struct {
 	AgentID            string
+	WorktreePath       string
 	Slot               int  // 0 = unassigned
 	HasSlot            bool
 	HasNotification    bool
@@ -27,6 +28,7 @@ type Row struct {
 	NoWorktree         bool
 	Crashed            bool
 	Attached           bool
+	Dirty              bool
 }
 
 // Model holds the TUI state.

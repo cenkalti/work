@@ -30,6 +30,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.Cursor >= len(m.Rows) {
 			m.Cursor = max(0, len(m.Rows)-1)
 		}
+		return m, loadDirtyCmd(m.Rows)
+
+	case dirtyLoadedMsg:
+		for i := range m.Rows {
+			if d, ok := msg[m.Rows[i].AgentID]; ok {
+				m.Rows[i].Dirty = d
+			}
+		}
 		return m, nil
 	}
 	return m, nil
