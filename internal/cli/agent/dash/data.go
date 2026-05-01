@@ -17,6 +17,7 @@ import (
 	"github.com/cenkalti/work/internal/paths"
 	"github.com/cenkalti/work/internal/slot"
 	"github.com/cenkalti/work/internal/task"
+	todopkg "github.com/cenkalti/work/internal/todo"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -196,6 +197,18 @@ func loadRows() ([]Row, error) {
 		rows = append(rows, row)
 	}
 
+	// Match todos to agents by their & handles. A handle of the form
+	// "<project>/<name>" links the todo to the agent with that project and
+	// name. Plain "<project>" handles (no slash) are ignored here.
+	if todoIndex, err := loadTodoAgentIndex(); err == nil {
+		for i := range rows {
+			key := rows[i].Project + "/" + rows[i].Name
+			if ids := todoIndex[key]; len(ids) > 0 {
+				rows[i].TodoIDs = ids
+			}
+		}
+	}
+
 	// Normalize the user-defined order: prune UUIDs no longer present, append
 	// any newly-seen UUIDs at the end.
 	ord, _ := order.Read()
@@ -240,6 +253,33 @@ func loadRows() ([]Row, error) {
 	})
 
 	return rows, nil
+}
+
+// loadTodoAgentIndex scans every open todo for & handles of the form
+// "<project>/<name>" and returns map[<project>/<name>] -> []todoID.
+// Closed (completed/cancelled) todos are excluded.
+func loadTodoAgentIndex() (map[string][]string, error) {
+	dir, err := todopkg.Dir()
+	if err != nil {
+		return nil, err
+	}
+	todos, _, err := todopkg.LoadAll(dir)
+	if err != nil {
+		return nil, err
+	}
+	idx := make(map[string][]string, len(todos))
+	for id, t := range todos {
+		if todopkg.IsClosed(t.Status) {
+			continue
+		}
+		for _, h := range t.Projects {
+			if !strings.Contains(h, "/") {
+				continue
+			}
+			idx[h] = append(idx[h], id)
+		}
+	}
+	return idx, nil
 }
 
 // taskProgress reports the completed/total task counts for an agent.

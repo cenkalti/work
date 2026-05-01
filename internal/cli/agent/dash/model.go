@@ -32,6 +32,7 @@ type Row struct {
 	HasTask            bool
 	TasksCompleted     int
 	TasksTotal         int
+	TodoIDs            []string
 }
 
 // Model holds the TUI state.
