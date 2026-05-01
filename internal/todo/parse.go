@@ -194,7 +194,9 @@ func classify(rest string) (kind lineKind, marker byte, body string) {
 }
 
 // splitTitleAndID extracts the optional <!--id--> suffix from an item body
-// and returns the trimmed title plus the id (or "" if absent).
+// and returns the trimmed title plus the id (or "" if absent). Hand-typed ids
+// may be any [a-z0-9-]{1,32} string; auto-generated ids are 6 chars from
+// [a-z0-9].
 func splitTitleAndID(body string) (string, string, error) {
 	const open = " <!--"
 	const closeSuffix = "-->"
@@ -204,9 +206,6 @@ func splitTitleAndID(body string) (string, string, error) {
 	}
 	idStart := idx + len(open)
 	idEnd := len(body) - len(closeSuffix)
-	if idEnd-idStart != idLen {
-		return strings.TrimSpace(body), "", nil
-	}
 	id := body[idStart:idEnd]
 	if !isValidID(id) {
 		return strings.TrimSpace(body), "", nil
@@ -214,13 +213,15 @@ func splitTitleAndID(body string) (string, string, error) {
 	return strings.TrimSpace(body[:idx]), id, nil
 }
 
+const maxIDLen = 32
+
 func isValidID(s string) bool {
-	if len(s) != idLen {
+	if len(s) == 0 || len(s) > maxIDLen {
 		return false
 	}
 	for i := 0; i < len(s); i++ {
 		c := s[i]
-		if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+		if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') {
 			return false
 		}
 	}
