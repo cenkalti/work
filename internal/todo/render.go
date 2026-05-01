@@ -23,6 +23,11 @@ func renderItem(buf *bytes.Buffer, todos map[string]*Todo, t *Todo, depth int) {
 	indent := strings.Repeat("  ", depth)
 	fmt.Fprintf(buf, "%s- [%s] %s <!--%s-->\n", indent, marker(t.Status), t.Title, t.ID)
 	childIndent := strings.Repeat("  ", depth+1)
+	if t.Notes != "" {
+		for line := range strings.SplitSeq(t.Notes, "\n") {
+			fmt.Fprintf(buf, "%s%s\n", childIndent, line)
+		}
+	}
 	for _, l := range t.Links {
 		if l.Label != "" {
 			fmt.Fprintf(buf, "%s@ [%s](%s)\n", childIndent, l.Label, l.URL)
@@ -32,11 +37,6 @@ func renderItem(buf *bytes.Buffer, todos map[string]*Todo, t *Todo, depth int) {
 	}
 	for _, p := range t.Projects {
 		fmt.Fprintf(buf, "%s& %s\n", childIndent, p)
-	}
-	if t.Notes != "" {
-		for line := range strings.SplitSeq(t.Notes, "\n") {
-			fmt.Fprintf(buf, "%s%s\n", childIndent, line)
-		}
 	}
 	for _, cid := range t.Children {
 		c, ok := todos[cid]
