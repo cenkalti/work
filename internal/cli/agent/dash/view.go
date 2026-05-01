@@ -5,67 +5,71 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cenkalti/work/internal/agent"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/table"
+	"github.com/cenkalti/work/internal/agent"
 )
 
 var (
 	headerStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("245"))
-	cursorStyle   = lipgloss.NewStyle().Reverse(true)
+	cellStyle     = lipgloss.NewStyle().PaddingRight(1)
+	cursorStyle   = lipgloss.NewStyle().Reverse(true).PaddingRight(1)
 	dimStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 	notifStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9"))
 	attachedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
 	dirtyStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
 
 	statusStyles = map[string]lipgloss.Style{
-		agent.StatusRunning:       lipgloss.NewStyle().Foreground(lipgloss.Color("14")), // cyan
-		agent.StatusToolRunning:   lipgloss.NewStyle().Foreground(lipgloss.Color("11")), // yellow
+		agent.StatusRunning:       lipgloss.NewStyle().Foreground(lipgloss.Color("14")),
+		agent.StatusToolRunning:   lipgloss.NewStyle().Foreground(lipgloss.Color("11")),
 		agent.StatusAwaitingInput: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9")),
-		agent.StatusIdle:          lipgloss.NewStyle().Foreground(lipgloss.Color("10")), // green
+		agent.StatusIdle:          lipgloss.NewStyle().Foreground(lipgloss.Color("10")),
 		agent.StatusStopped:       lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
 	}
 
 	footerStyle = lipgloss.NewStyle().Faint(true)
 )
 
-// Column widths. The last column (prompt) takes the remainder.
 const (
-	colSlot   = 1
-	colNotif  = 1
-	colAttach = 1
-	colDirty  = 1
-	colTasks  = 5
-	colTodo   = 7
-	colStatus = 14
-	colProj   = 12
-	colName   = 20
-	colTool   = 14
-	colTurn   = 7
-	colAct    = 8
+	colN = iota
+	colProject
+	colName
+	colNotif
+	colAttach
+	colDirty
+	colStatus
+	colTasks
+	colTodo
+	colTool
+	colTurn
+	colLast
+	colPrompt
 )
 
-func (m Model) View() tea.View {
-	var b strings.Builder
+var headers = []string{
+	"N", "PROJECT", "NAME", "!", "C", "D",
+	"STATUS", "TASKS", "TODO", "TOOL", "TURN", "LAST", "PROMPT",
+}
 
-	b.WriteString(headerStyle.Render(headerLine()))
-	b.WriteByte('\n')
+func (m Model) View() tea.View {
+	body := m.renderTable()
+
+	var b strings.Builder
+	b.WriteString(body)
+	if !strings.HasSuffix(body, "\n") {
+		b.WriteByte('\n')
+	}
 
 	if len(m.Rows) == 0 {
 		b.WriteString(dimStyle.Render("(no agents — run `agent run` in a worktree to register one)"))
 		b.WriteByte('\n')
 	}
 
-	for i, r := range m.Rows {
-		b.WriteString(renderRow(r, m.Width, i == m.Cursor))
-		b.WriteByte('\n')
-	}
-
-	// pad with blank lines so footer hugs the bottom of the alt-screen.
 	if m.Height > 0 {
-		used := 1 + len(m.Rows) // header + rows
+		used := strings.Count(body, "\n") + 1
 		if len(m.Rows) == 0 {
-			used = 2
+			used++
 		}
 		footerHeight := 2
 		blank := m.Height - used - footerHeight
@@ -81,41 +85,57 @@ func (m Model) View() tea.View {
 	return v
 }
 
-func headerLine() string {
-	return fmt.Sprintf("%-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %s",
-		colSlot, "N",
-		colProj, "PROJECT",
-		colName, "NAME",
-		colNotif, "!",
-		colAttach, "C",
-		colDirty, "D",
-		colStatus, "STATUS",
-		colTasks, "TASKS",
-		colTodo, "TODO",
-		colTool, "TOOL",
-		colTurn, "TURN",
-		colAct, "LAST",
-		"PROMPT",
-	)
+func (m Model) renderTable() string {
+	rows := make([][]string, 0, len(m.Rows))
+	for _, r := range m.Rows {
+		rows = append(rows, rowCells(r))
+	}
+
+	t := table.New().
+		Border(lipgloss.HiddenBorder()).
+		BorderTop(false).
+		BorderBottom(false).
+		BorderLeft(false).
+		BorderRight(false).
+		BorderColumn(false).
+		BorderRow(false).
+		BorderHeader(false).
+		Headers(headers...).
+		Rows(rows...).
+		Wrap(false).
+		StyleFunc(func(row, col int) lipgloss.Style {
+			if row == table.HeaderRow {
+				return headerStyle.PaddingRight(1)
+			}
+			if row == m.Cursor && col <= colName {
+				return cursorStyle
+			}
+			return cellStyle
+		})
+
+	if m.Width > 0 {
+		t.Width(m.Width)
+	}
+	return t.Render()
 }
 
-func renderRow(r Row, width int, selected bool) string {
+func rowCells(r Row) []string {
 	slotS := ""
 	if r.HasSlot {
 		slotS = fmt.Sprintf("%d", r.Slot)
 	}
 
-	notifS := " "
+	notifS := ""
 	if r.HasNotification {
 		notifS = notifStyle.Render("!")
 	}
 
-	attachS := " "
+	attachS := ""
 	if r.Attached {
 		attachS = attachedStyle.Render("●")
 	}
 
-	dirtyS := " "
+	dirtyS := ""
 	if r.Dirty {
 		dirtyS = dirtyStyle.Render("*")
 	}
@@ -134,18 +154,20 @@ func renderRow(r Row, width int, selected bool) string {
 	}
 
 	statusText := r.Status
-	if r.Crashed {
+	switch {
+	case r.Crashed:
 		statusText = "crashed"
-	} else if r.NoWorktree {
+	case r.NoWorktree:
 		statusText = "no-tree"
 	}
-	statusS := truncate(statusText, colStatus)
-	if style, ok := statusStyles[r.Status]; ok && !r.Crashed && !r.NoWorktree {
-		statusS = style.Render(padRight(statusS, colStatus))
-	} else if r.Crashed || r.NoWorktree {
-		statusS = dimStyle.Render(padRight(statusS, colStatus))
-	} else {
-		statusS = padRight(statusS, colStatus)
+	statusS := statusText
+	switch {
+	case r.Crashed || r.NoWorktree:
+		statusS = dimStyle.Render(statusText)
+	default:
+		if style, ok := statusStyles[r.Status]; ok {
+			statusS = style.Render(statusText)
+		}
 	}
 
 	turnS := ""
@@ -157,33 +179,23 @@ func renderRow(r Row, width int, selected bool) string {
 		actS = fmtRelative(r.LastActivity)
 	}
 
-	// Compute remaining width for prompt.
-	usedWidth := colNotif + 1 + colAttach + 1 + colDirty + 1 + colStatus + 1 + colSlot + 1 + colProj + 1 + colName + 1 + colTasks + 1 + colTodo + 1 + colTool + 1 + colTurn + 1 + colAct + 1
-	promptW := max(width-usedWidth, 8)
-	promptS := truncate(strings.Join(strings.Fields(r.LastPromptPreview), " "), promptW)
+	promptS := strings.Join(strings.Fields(r.LastPromptPreview), " ")
 
-	highlight := fmt.Sprintf("%-*s %-*s %-*s",
-		colSlot, slotS,
-		colProj, truncate(r.Project, colProj),
-		colName, truncate(r.Name, colName),
-	)
-	if selected {
-		highlight = cursorStyle.Render(highlight)
-	}
-
-	return fmt.Sprintf("%s %s %s %s %s %-*s %-*s %-*s %-*s %-*s %s",
-		highlight,
+	return []string{
+		slotS,
+		r.Project,
+		r.Name,
 		notifS,
 		attachS,
 		dirtyS,
 		statusS,
-		colTasks, tasksS,
-		colTodo, todoS,
-		colTool, truncate(r.CurrentTool, colTool),
-		colTurn, turnS,
-		colAct, actS,
+		tasksS,
+		todoS,
+		r.CurrentTool,
+		turnS,
+		actS,
 		promptS,
-	)
+	}
 }
 
 func footerLine(m Model) string {
@@ -193,27 +205,6 @@ func footerLine(m Model) string {
 		ts = "—"
 	}
 	return fmt.Sprintf("%s    last refresh: %s", hint, ts)
-}
-
-func truncate(s string, n int) string {
-	if n <= 0 {
-		return ""
-	}
-	r := []rune(s)
-	if len(r) <= n {
-		return s
-	}
-	if n == 1 {
-		return "…"
-	}
-	return string(r[:n-1]) + "…"
-}
-
-func padRight(s string, n int) string {
-	if len([]rune(s)) >= n {
-		return s
-	}
-	return s + strings.Repeat(" ", n-len([]rune(s)))
 }
 
 func fmtDuration(d time.Duration) string {
