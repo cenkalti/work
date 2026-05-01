@@ -52,11 +52,7 @@ func (m Model) View() string {
 	}
 
 	for i, r := range m.Rows {
-		line := renderRow(r, m.Width)
-		if i == m.Cursor {
-			line = cursorStyle.Render(line)
-		}
-		b.WriteString(line)
+		b.WriteString(renderRow(r, m.Width, i == m.Cursor))
 		b.WriteByte('\n')
 	}
 
@@ -81,11 +77,11 @@ func (m Model) View() string {
 func headerLine() string {
 	return fmt.Sprintf("%-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %s",
 		colSlot, "SLOT",
+		colProj, "PROJECT",
+		colName, "NAME",
 		colNotif, "!",
 		colAttach, "C",
 		colStatus, "STATUS",
-		colProj, "PROJECT",
-		colName, "NAME",
 		colTool, "TOOL",
 		colTurn, "TURN",
 		colAct, "LAST",
@@ -93,7 +89,7 @@ func headerLine() string {
 	)
 }
 
-func renderRow(r Row, width int) string {
+func renderRow(r Row, width int, selected bool) string {
 	slotS := "-"
 	if r.HasSlot {
 		slotS = fmt.Sprintf("%d", r.Slot)
@@ -134,17 +130,24 @@ func renderRow(r Row, width int) string {
 	}
 
 	// Compute remaining width for prompt.
-	usedWidth := colSlot + 1 + colNotif + 1 + colAttach + 1 + colStatus + 1 + colProj + 1 + colName + 1 + colTool + 1 + colTurn + 1 + colAct + 1
+	usedWidth := colNotif + 1 + colAttach + 1 + colStatus + 1 + colSlot + 1 + colProj + 1 + colName + 1 + colTool + 1 + colTurn + 1 + colAct + 1
 	promptW := max(width-usedWidth, 8)
 	promptS := truncate(strings.Join(strings.Fields(r.LastPromptPreview), " "), promptW)
 
-	return fmt.Sprintf("%-*s %s %s %s %-*s %-*s %-*s %-*s %-*s %s",
+	highlight := fmt.Sprintf("%-*s %-*s %-*s",
 		colSlot, slotS,
+		colProj, truncate(r.Project, colProj),
+		colName, truncate(r.Name, colName),
+	)
+	if selected {
+		highlight = cursorStyle.Render(highlight)
+	}
+
+	return fmt.Sprintf("%s %s %s %s %-*s %-*s %-*s %s",
+		highlight,
 		notifS,
 		attachS,
 		statusS,
-		colProj, truncate(r.Project, colProj),
-		colName, truncate(r.Name, colName),
 		colTool, truncate(r.CurrentTool, colTool),
 		colTurn, turnS,
 		colAct, actS,
