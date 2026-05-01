@@ -34,9 +34,9 @@ type rowsLoadedMsg []Row
 type dirtyLoadedMsg map[string]bool
 
 // loadRowsCmd asynchronously loads rows from disk.
-func loadRowsCmd() tea.Cmd {
+func loadRowsCmd(showArchived bool) tea.Cmd {
 	return func() tea.Msg {
-		rows, _ := loadRows()
+		rows, _ := loadRows(showArchived)
 		return rowsLoadedMsg(rows)
 	}
 }
@@ -125,11 +125,18 @@ func loadDirtyCmd(rows []Row) tea.Cmd {
 	}
 }
 
-func loadRows() ([]Row, error) {
+func loadRows(showArchived bool) ([]Row, error) {
 	recs, err := agent.List()
 	if err != nil {
 		return nil, err
 	}
+	filtered := recs[:0]
+	for _, r := range recs {
+		if r.Archived == showArchived {
+			filtered = append(filtered, r)
+		}
+	}
+	recs = filtered
 	slots, err := slot.Read()
 	if err != nil {
 		return nil, err

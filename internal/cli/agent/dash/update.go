@@ -23,7 +23,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tickMsg:
 		m.LastRefresh = time.Time(msg)
-		return m, tea.Batch(tickCmd(), loadRowsCmd())
+		return m, tea.Batch(tickCmd(), loadRowsCmd(m.ShowArchived))
 
 	case rowsLoadedMsg:
 		m.Rows = []Row(msg)
@@ -66,6 +66,20 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, m.jumpToCursor()
 	case "alt+0":
 		return m, m.unassignSlot()
+	case "a":
+		if m.ShowArchived {
+			return m, nil
+		}
+		return m, m.archiveCursor()
+	case "u":
+		if !m.ShowArchived {
+			return m, nil
+		}
+		return m, m.unarchiveCursor()
+	case "A":
+		m.ShowArchived = !m.ShowArchived
+		m.Cursor = 0
+		return m, loadRowsCmd(m.ShowArchived)
 	}
 
 	// alt+1..9 assigns the cursor agent to that slot.
@@ -135,7 +149,7 @@ func (m Model) assignSlot(n int) tea.Cmd {
 		return nil
 	}
 	_ = slot.Set(n, uuid)
-	return loadRowsCmd()
+	return loadRowsCmd(m.ShowArchived)
 }
 
 // moveUp swaps the cursor row with the row immediately above it in the user
@@ -151,7 +165,7 @@ func (m Model) moveUp() (tea.Model, tea.Cmd) {
 	}
 	m.Rows[m.Cursor], m.Rows[m.Cursor-1] = m.Rows[m.Cursor-1], m.Rows[m.Cursor]
 	m.Cursor--
-	return m, loadRowsCmd()
+	return m, loadRowsCmd(m.ShowArchived)
 }
 
 // moveDown swaps the cursor row with the row immediately below it in the user
@@ -167,7 +181,7 @@ func (m Model) moveDown() (tea.Model, tea.Cmd) {
 	}
 	m.Rows[m.Cursor], m.Rows[m.Cursor+1] = m.Rows[m.Cursor+1], m.Rows[m.Cursor]
 	m.Cursor++
-	return m, loadRowsCmd()
+	return m, loadRowsCmd(m.ShowArchived)
 }
 
 func (m Model) unassignSlot() tea.Cmd {
@@ -179,6 +193,41 @@ func (m Model) unassignSlot() tea.Cmd {
 		return nil
 	}
 	_ = slot.ClearByUUID(uuid)
-	return loadRowsCmd()
+	return loadRowsCmd(m.ShowArchived)
+}
+
+func (m Model) archiveCursor() tea.Cmd {
+	if m.Cursor < 0 || m.Cursor >= len(m.Rows) {
+		return nil
+	}
+	uuid := m.Rows[m.Cursor].AgentID
+	if uuid == "" {
+		return nil
+	}
+	rec, err := agent.Read(uuid)
+	if err != nil {
+		return nil
+	}
+	rec.Archived = true
+	_ = agent.Write(rec)
+	_ = slot.ClearByUUID(uuid)
+	return loadRowsCmd(m.ShowArchived)
+}
+
+func (m Model) unarchiveCursor() tea.Cmd {
+	if m.Cursor < 0 || m.Cursor >= len(m.Rows) {
+		return nil
+	}
+	uuid := m.Rows[m.Cursor].AgentID
+	if uuid == "" {
+		return nil
+	}
+	rec, err := agent.Read(uuid)
+	if err != nil {
+		return nil
+	}
+	rec.Archived = false
+	_ = agent.Write(rec)
+	return loadRowsCmd(m.ShowArchived)
 }
 

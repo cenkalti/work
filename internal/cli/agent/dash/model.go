@@ -37,12 +37,13 @@ type Row struct {
 
 // Model holds the TUI state.
 type Model struct {
-	Rows        []Row
-	Cursor      int
-	Width       int
-	Height      int
-	LastRefresh time.Time
-	Quit        bool
+	Rows         []Row
+	Cursor       int
+	Width        int
+	Height       int
+	LastRefresh  time.Time
+	ShowArchived bool
+	Quit         bool
 }
 
 // NewModel returns an empty model.
@@ -51,5 +52,5 @@ func NewModel() Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(tickCmd(), loadRowsCmd())
+	return tea.Batch(tickCmd(), loadRowsCmd(m.ShowArchived))
 }

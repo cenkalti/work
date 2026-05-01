@@ -84,21 +84,31 @@ var headers = []string{
 }
 
 func (m Model) View() tea.View {
-	header := titleStyle.Render("◆ AGENTS")
+	title := "◆ AGENTS"
+	noun := "agents"
+	if m.ShowArchived {
+		title = "◆ ARCHIVED"
+		noun = "archived"
+	}
+	header := titleStyle.Render(title)
 	if !m.LastRefresh.IsZero() {
 		header = lipgloss.JoinHorizontal(
 			lipgloss.Top,
 			header,
-			subtitleStyle.Render(fmt.Sprintf("· %d agents · refreshed %s", len(m.Rows), m.LastRefresh.Format("15:04:05"))),
+			subtitleStyle.Render(fmt.Sprintf("· %d %s · refreshed %s", len(m.Rows), noun, m.LastRefresh.Format("15:04:05"))),
 		)
 	}
 
 	body := m.renderTable()
 	if len(m.Rows) == 0 {
-		body = emptyStyle.Render("no agents — run `agent run` in a worktree to register one")
+		if m.ShowArchived {
+			body = emptyStyle.Render("no archived agents")
+		} else {
+			body = emptyStyle.Render("no agents — run `agent run` in a worktree to register one")
+		}
 	}
 
-	footer := footerStyle.Render(footerLine())
+	footer := footerStyle.Render(footerLine(m.ShowArchived))
 
 	content := lipgloss.JoinVertical(lipgloss.Left, header, body, footer)
 
@@ -225,15 +235,28 @@ func rowCells(r Row) []string {
 	}
 }
 
-func footerLine() string {
-	parts := []string{
-		keyStyle.Render("j/k") + " nav",
-		keyStyle.Render("J/K") + " move",
-		keyStyle.Render("⏎") + " jump",
-		keyStyle.Render("1-9") + " slot",
-		keyStyle.Render("⌥1-9") + " assign",
-		keyStyle.Render("⌥0") + " unassign",
-		keyStyle.Render("q") + " quit",
+func footerLine(showArchived bool) string {
+	var parts []string
+	if showArchived {
+		parts = []string{
+			keyStyle.Render("j/k") + " nav",
+			keyStyle.Render("⏎") + " jump",
+			keyStyle.Render("u") + " unarchive",
+			keyStyle.Render("A") + " back",
+			keyStyle.Render("q") + " quit",
+		}
+	} else {
+		parts = []string{
+			keyStyle.Render("j/k") + " nav",
+			keyStyle.Render("J/K") + " move",
+			keyStyle.Render("⏎") + " jump",
+			keyStyle.Render("1-9") + " slot",
+			keyStyle.Render("⌥1-9") + " assign",
+			keyStyle.Render("⌥0") + " unassign",
+			keyStyle.Render("a") + " archive",
+			keyStyle.Render("A") + " archived",
+			keyStyle.Render("q") + " quit",
+		}
 	}
 	return strings.Join(parts, "  ·  ")
 }

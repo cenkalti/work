@@ -61,7 +61,7 @@ func TestLoadRowsSortAndSlot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rows, err := loadRows()
+	rows, err := loadRows(false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestLoadRowsAppendsNewAgentsToOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := loadRows(); err != nil {
+	if _, err := loadRows(false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -119,7 +119,7 @@ func TestLoadRowsPrunesMissingAgentsFromOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := loadRows(); err != nil {
+	if _, err := loadRows(false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -151,7 +151,7 @@ func TestLoadRowsNoWorktreeAndCrashed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rows, err := loadRows()
+	rows, err := loadRows(false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +181,7 @@ func TestLoadRowsAliveSessionNotCrashed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rows, err := loadRows()
+	rows, err := loadRows(false)
 	if err != nil {
 		t.Fatal(err)
 	}

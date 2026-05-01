@@ -45,6 +45,8 @@ type Record struct {
 	StartedAt     time.Time `json:"started_at,omitzero"`
 	LastActivity  time.Time `json:"last_activity,omitzero"`
 	TurnStartedAt time.Time `json:"turn_started_at,omitzero"`
+
+	Archived bool `json:"archived,omitempty"`
 }
 
 // Dir returns the central agents directory: ~/.work/agents/.
