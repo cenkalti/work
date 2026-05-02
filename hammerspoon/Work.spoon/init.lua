@@ -10,8 +10,9 @@ obj.agentBin = os.getenv('HOME') .. '/go/bin/agent'
 obj.agentsDir = os.getenv('HOME') .. '/.work/agents'
 
 function obj:init()
-    self.idleImage = hs.image.imageFromPath(hs.spoons.resourcePath('idle.png')):template(true)
-    self.attentionImage = hs.image.imageFromPath(hs.spoons.resourcePath('attention.png'))
+    local iconSize = { w = 18, h = 18 }
+    self.idleImage = hs.image.imageFromPath(hs.spoons.resourcePath('idle.png')):setSize(iconSize):template(true)
+    self.attentionImage = hs.image.imageFromPath(hs.spoons.resourcePath('attention.png')):setSize(iconSize)
     self.menubar = nil
     self.timer = nil
     self.attention = nil
@@ -51,8 +52,29 @@ function obj:tick()
     end
 end
 
+obj.dashWindowTitle = 'Agents'
+
+function obj:findDashWindow()
+    local app = hs.application.get('WezTerm')
+    if not app then return nil end
+    for _, win in ipairs(app:allWindows()) do
+        if win:title() == self.dashWindowTitle then
+            return win
+        end
+    end
+    return nil
+end
+
 function obj:focusDashboard()
-    hs.task.new(self.agentBin, nil, { 'dash-focus' }):start()
+    hs.application.launchOrFocus('WezTerm')
+    hs.task.new(self.agentBin, function()
+        local win = self:findDashWindow()
+        if not win then return end
+        local prev = hs.window.animationDuration
+        hs.window.animationDuration = 0
+        win:setFrame(win:screen():frame())
+        hs.window.animationDuration = prev
+    end, { 'dash-focus' }):start()
 end
 
 function obj:stop()

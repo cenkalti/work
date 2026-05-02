@@ -26,11 +26,7 @@ func dashFocusCmd() *cobra.Command {
 func runDashFocus() error {
 	if id, ok := readDashPaneID(); ok {
 		if _, found := wezterm.FindPaneByID(id); found {
-			if err := wezterm.ActivatePane(id); err != nil {
-				return err
-			}
-			wezterm.MaximizePane(id)
-			return nil
+			return wezterm.ActivatePane(id)
 		}
 	}
 
@@ -50,11 +46,7 @@ func runDashFocus() error {
 	if err != nil {
 		return err
 	}
-	if err := wezterm.ActivatePane(paneID); err != nil {
-		return err
-	}
-	wezterm.MaximizePane(paneID)
-	return nil
+	return wezterm.ActivatePane(paneID)
 }
 
 func readDashPaneID() (int, bool) {
