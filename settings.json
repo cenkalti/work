@@ -3,41 +3,5 @@
     "allow": [
       "mcp__task__create_task"
     ]
-  },
-  "sandbox": {
-    "enabled": true,
-    "failIfUnavailable": true,
-    "filesystem": {
-      "denyWrite": [
-        "~/.ssh",
-        "~/.aws",
-        "~/.config/gh",
-        "~/Library/Keychains",
-        "~/.netrc",
-        "~/.pgpass",
-        "~/.zshrc",
-        "~/.bashrc"
-      ],
-      "denyRead": [
-        "~/.ssh",
-        "~/.aws",
-        "~/.config/gh",
-        "~/Library/Keychains",
-        "~/.netrc",
-        "~/.pgpass"
-      ]
-    },
-    "network": {
-      "allowedDomains": [
-        "api.anthropic.com",
-        "registry.npmjs.org",
-        "pypi.org",
-        "files.pythonhosted.org",
-        "proxy.golang.org",
-        "sum.golang.org",
-        "github.com",
-        "objects.githubusercontent.com"
-      ]
-    }
   }
 }
