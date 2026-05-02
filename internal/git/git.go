@@ -60,6 +60,18 @@ func IsDirty(path string) bool {
 	return len(out) > 0
 }
 
+// CurrentBranch returns the branch name checked out in the worktree at path,
+// or "" on detached HEAD or any error. Fast: a single `git branch --show-current`.
+func CurrentBranch(path string) string {
+	cmd := exec.Command("git", "--no-optional-locks", "branch", "--show-current")
+	cmd.Dir = path
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
 // DefaultBranch returns "main" if it exists, otherwise "master".
 func DefaultBranch(repo string) string {
 	cmd := exec.Command("git", "rev-parse", "--verify", "main")

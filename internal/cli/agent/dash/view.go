@@ -66,6 +66,7 @@ const (
 	colN = iota
 	colProject
 	colName
+	colBranch
 	colNotif
 	colAttach
 	colDirty
@@ -79,7 +80,7 @@ const (
 )
 
 var headers = []string{
-	"#", "PROJECT", "NAME", "!", "C", "D",
+	"#", "PROJECT", "NAME", "BRANCH", "!", "C", "D",
 	"STATUS", "TASKS", "TODO", "TOOL", "TURN", "LAST", "PROMPT",
 }
 
@@ -235,6 +236,7 @@ func rowCells(r Row) []string {
 		slotS,
 		r.Project,
 		r.Name,
+		r.Branch,
 		notifS,
 		attachS,
 		dirtyS,

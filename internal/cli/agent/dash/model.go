@@ -21,6 +21,7 @@ type Row struct {
 	Status             string
 	Project            string
 	Name               string
+	Branch             string
 	CurrentTool        string
 	TurnElapsed        time.Duration
 	HasTurnElapsed     bool

@@ -189,6 +189,21 @@ func loadRows(showArchived bool) ([]Row, error) {
 				row.NoWorktree = true
 			}
 		}
+		// Current branch, with WORK_BRANCH_PREFIX-style prefixes stripped
+		// for display: anything before the first "/" is dropped so
+		// e.g. "jakealti/kube-url-routing" shows as "kube-url-routing".
+		// This is lossy for legitimately namespaced branches like
+		// "release/v1.2" (would show "v1.2"); revisit by capturing the
+		// prefix into the agent record if that bites. Empty on detached
+		// HEAD or git error.
+		if !row.NoWorktree && r.WorktreePath != "" {
+			if b := git.CurrentBranch(r.WorktreePath); b != "" {
+				if i := strings.Index(b, "/"); i >= 0 {
+					b = b[i+1:]
+				}
+				row.Branch = b
+			}
+		}
 		// Seed dirty from the last cached value (regardless of freshness) so
 		// the indicator does not blink while loadDirtyCmd refreshes it.
 		if !row.NoWorktree && row.WorktreePath != "" {
