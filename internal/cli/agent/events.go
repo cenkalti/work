@@ -124,6 +124,7 @@ func handlePreToolUse(p *hookPayload) error {
 	if err := updateRecord(p.SessionID, func(r *agentpkg.Record) {
 		r.Status = agentpkg.StatusToolRunning
 		r.CurrentTool = p.ToolName
+		r.NotificationCount = 0
 		r.LastActivity = now
 	}); err != nil {
 		return err
@@ -140,6 +141,7 @@ func handlePostToolUse(p *hookPayload) error {
 	return updateRecord(p.SessionID, func(r *agentpkg.Record) {
 		r.Status = agentpkg.StatusRunning
 		r.CurrentTool = ""
+		r.NotificationCount = 0
 		r.LastActivity = now
 	})
 }
