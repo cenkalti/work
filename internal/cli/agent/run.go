@@ -80,6 +80,9 @@ func loadOrCreateAgent() (*agent.Record, error) {
 	var worktreePath string
 	if loc.IsRoot() {
 		worktreePath = loc.RootRepo
+		if _, err := paths.EnsureRootWorkspace(loc.RootRepo); err != nil {
+			return nil, err
+		}
 	} else {
 		worktreePath = paths.Worktree(loc.RootRepo, loc.Branch)
 	}

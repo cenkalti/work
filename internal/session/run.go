@@ -12,9 +12,11 @@ import (
 
 // Create sets up a worktree and workspace. `name` is the dot-separated task
 // identity used for paths; `branch` is the git ref (may carry a prefix).
-// For child tasks, the task file is marked active.
+// If noBranch is true, no new git branch is created; the worktree checks out
+// the repo's default branch directly (force, so it can coexist with the root
+// repo's checkout). For child tasks, the task file is marked active.
 // Returns the worktree path.
-func Create(ctx *location.Location, name, branch string) (string, error) {
+func Create(ctx *location.Location, name, branch string, noBranch bool) (string, error) {
 	parentName := paths.ParentBranch(name)
 	taskID := paths.BranchID(name)
 
@@ -25,9 +27,20 @@ func Create(ctx *location.Location, name, branch string) (string, error) {
 	}
 
 	wtPath := paths.Worktree(ctx.RootRepo, name)
-	created, err := git.CreateWorktree(ctx.RootRepo, wtPath, branch, git.DefaultBranch(ctx.RootRepo))
-	if err != nil {
-		return "", fmt.Errorf("creating worktree: %w", err)
+	var created bool
+	if noBranch {
+		if _, statErr := os.Stat(wtPath); statErr != nil {
+			created = true
+		}
+		if err := git.CreateWorktreeOnBranch(ctx.RootRepo, wtPath, git.DefaultBranch(ctx.RootRepo)); err != nil {
+			return "", fmt.Errorf("creating worktree: %w", err)
+		}
+	} else {
+		var err error
+		created, err = git.CreateWorktree(ctx.RootRepo, wtPath, branch, git.DefaultBranch(ctx.RootRepo))
+		if err != nil {
+			return "", fmt.Errorf("creating worktree: %w", err)
+		}
 	}
 
 	success := false
@@ -37,6 +50,9 @@ func Create(ctx *location.Location, name, branch string) (string, error) {
 		}
 	}()
 
+	if _, err := paths.EnsureProject(ctx.RootRepo); err != nil {
+		return "", err
+	}
 	spacePath := paths.Workspace(ctx.RootRepo, name)
 	if err := os.MkdirAll(spacePath, 0755); err != nil {
 		return "", fmt.Errorf("creating workspace: %w", err)

@@ -8,6 +8,22 @@ import (
 	"strings"
 )
 
+// CreateWorktreeOnBranch creates a worktree at wtPath checked out on an
+// existing branch (e.g., "main"), without creating a new branch. Uses -f so
+// it succeeds even if the branch is already checked out elsewhere (root
+// repo). Both worktrees then share the branch tip.
+func CreateWorktreeOnBranch(repo, wtPath, branch string) error {
+	if _, err := os.Stat(wtPath); err == nil {
+		return nil
+	}
+	cmd := exec.Command("git", "worktree", "add", "-f", wtPath, branch)
+	cmd.Dir = repo
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git worktree add -f: %s: %w", string(out), err)
+	}
+	return nil
+}
+
 // CreateWorktree creates a git worktree at the given path on the given branch.
 // If the worktree already exists, it is reused. If the branch already exists,
 // the worktree is created from it. Returns true if a new worktree was created.

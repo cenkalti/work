@@ -305,6 +305,9 @@ func moveFromRoot(root, dst string) error {
 		return fmt.Errorf("no workspace found at root: %w", err)
 	}
 
+	if _, err := paths.EnsureProject(root); err != nil {
+		return err
+	}
 	dstSpace := paths.Workspace(root, dst)
 	if err := os.MkdirAll(filepath.Dir(dstSpace), 0755); err != nil {
 		return err
