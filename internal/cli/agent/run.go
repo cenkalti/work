@@ -2,6 +2,7 @@ package agent
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -21,12 +22,30 @@ import (
 
 func runCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "run",
+		Use:   "run [<project>[/<branch>]]",
 		Short: "Start or resume a claude session",
+		Args:  cobra.MaximumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) > 0 {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+			names, _ := listAgents(listOpts{all: true})
+			return names, cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			claudeBin, err := exec.LookPath("claude")
 			if err != nil {
 				return err
+			}
+
+			if len(args) == 1 {
+				path, err := resolveAgentPath(args[0])
+				if err != nil {
+					return fmt.Errorf("%w (run `work mk` to create the worktree)", err)
+				}
+				if err := os.Chdir(path); err != nil {
+					return err
+				}
 			}
 
 			rec, err := loadOrCreateAgent()
