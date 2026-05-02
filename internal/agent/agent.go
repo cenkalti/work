@@ -8,8 +8,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/cenkalti/work/internal/wezterm"
 )
 
 const (
@@ -32,6 +35,7 @@ type Record struct {
 	WorktreePath string `json:"worktree_path"`
 
 	PaneID           string `json:"pane_id,omitempty"`
+	TTYName          string `json:"tty_name,omitempty"`
 	CurrentSessionID string `json:"current_session_id,omitempty"`
 
 	Status             string `json:"status"`
@@ -115,7 +119,34 @@ func Write(r *Record) error {
 		os.Remove(tmpPath)
 		return err
 	}
-	return os.Rename(tmpPath, final)
+	if err := os.Rename(tmpPath, final); err != nil {
+		return err
+	}
+	if r.TTYName != "" {
+		wezterm.WriteUserVars(r.TTYName, recordUserVars(r))
+	}
+	return nil
+}
+
+// recordUserVars returns the subset of Record fields broadcast to WezTerm as
+// OSC SetUserVar values. Identity + status fields only; timestamps and the
+// internal id/tty_name/archived fields are skipped.
+func recordUserVars(r *Record) map[string]string {
+	return map[string]string{
+		"agent_name":                r.Name,
+		"agent_project":             r.Project,
+		"agent_project_root":        r.ProjectRoot,
+		"agent_task_id":             r.TaskID,
+		"agent_branch":              r.Branch,
+		"agent_worktree_path":       r.WorktreePath,
+		"agent_pane_id":             r.PaneID,
+		"agent_current_session_id":  r.CurrentSessionID,
+		"agent_status":              r.Status,
+		"agent_current_tool":        r.CurrentTool,
+		"agent_notification_count":  strconv.Itoa(r.NotificationCount),
+		"agent_message_count":       strconv.Itoa(r.MessageCount),
+		"agent_last_prompt_preview": r.LastPromptPreview,
+	}
 }
 
 // Delete removes the agent record file. Missing is not an error.

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/cenkalti/work/internal/agent"
 	"github.com/cenkalti/work/internal/location"
 	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/wezterm"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
@@ -33,6 +35,11 @@ func runCmd() *cobra.Command {
 			}
 
 			rec.PaneID = os.Getenv("WEZTERM_PANE")
+			if id, err := strconv.Atoi(rec.PaneID); err == nil {
+				if p, ok := wezterm.FindPaneByID(id); ok {
+					rec.TTYName = p.TTYName
+				}
+			}
 			rec.UpdatedAt = time.Now().UTC()
 
 			var claudeArgs []string

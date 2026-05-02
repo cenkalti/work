@@ -150,6 +150,10 @@ func writeAgentMaximize(tty string) {
 }
 
 func writeUserVar(tty, name string) {
+	writeUserVarValue(tty, name, strconv.FormatInt(time.Now().UnixNano(), 10))
+}
+
+func writeUserVarValue(tty, name, value string) {
 	if !strings.HasPrefix(tty, "/dev/") {
 		return
 	}
@@ -158,6 +162,23 @@ func writeUserVar(tty, name string) {
 		return
 	}
 	defer f.Close()
-	val := base64.StdEncoding.EncodeToString([]byte(strconv.FormatInt(time.Now().UnixNano(), 10)))
-	_, _ = fmt.Fprintf(f, "\x1b]1337;SetUserVar=%s=%s\x07", name, val)
+	enc := base64.StdEncoding.EncodeToString([]byte(value))
+	_, _ = fmt.Fprintf(f, "\x1b]1337;SetUserVar=%s=%s\x07", name, enc)
+}
+
+// WriteUserVars opens the given TTY once and writes every (name, value) pair
+// as an OSC 1337 SetUserVar escape. Best-effort: silent on TTY errors.
+func WriteUserVars(tty string, vars map[string]string) {
+	if !strings.HasPrefix(tty, "/dev/") {
+		return
+	}
+	f, err := os.OpenFile(tty, os.O_WRONLY, 0)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	for name, value := range vars {
+		enc := base64.StdEncoding.EncodeToString([]byte(value))
+		_, _ = fmt.Fprintf(f, "\x1b]1337;SetUserVar=%s=%s\x07", name, enc)
+	}
 }
