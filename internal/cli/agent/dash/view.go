@@ -65,7 +65,7 @@ var (
 const (
 	colN = iota
 	colProject
-	colName
+	colTree
 	colBranch
 	colSession
 	colNotif
@@ -81,7 +81,7 @@ const (
 )
 
 var headers = []string{
-	"#", "PROJECT", "NAME", "BRANCH", "SESSION", "!", "C", "D",
+	"#", "PROJECT", "TREE", "BRANCH", "SESSION", "!", "C", "D",
 	"STATUS", "TASKS", "TODO", "TOOL", "TURN", "LAST", "PROMPT",
 }
 
