@@ -182,6 +182,7 @@ func loadRows(showArchived bool) ([]Row, error) {
 			if !alive && (r.Status == agent.StatusRunning || r.Status == agent.StatusToolRunning || r.Status == agent.StatusAwaitingInput) {
 				row.Crashed = true
 			}
+			row.Session = claudeSessionName(r.WorktreePath, r.CurrentSessionID)
 		}
 		// Worktree existence.
 		if r.WorktreePath != "" {

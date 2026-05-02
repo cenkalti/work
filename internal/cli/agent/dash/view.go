@@ -67,6 +67,7 @@ const (
 	colProject
 	colName
 	colBranch
+	colSession
 	colNotif
 	colAttach
 	colDirty
@@ -80,7 +81,7 @@ const (
 )
 
 var headers = []string{
-	"#", "PROJECT", "NAME", "BRANCH", "!", "C", "D",
+	"#", "PROJECT", "NAME", "BRANCH", "SESSION", "!", "C", "D",
 	"STATUS", "TASKS", "TODO", "TOOL", "TURN", "LAST", "PROMPT",
 }
 
@@ -237,6 +238,7 @@ func rowCells(r Row) []string {
 		r.Project,
 		r.Name,
 		r.Branch,
+		r.Session,
 		notifS,
 		attachS,
 		dirtyS,
