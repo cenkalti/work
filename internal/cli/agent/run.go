@@ -15,10 +15,38 @@ import (
 	"github.com/cenkalti/work/internal/agent"
 	"github.com/cenkalti/work/internal/location"
 	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/session"
 	"github.com/cenkalti/work/internal/wezterm"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
+
+// createAgentWorktree creates a worktree for the given <project>/<branch> id
+// using the same logic as `work mk`. Returns the resulting worktree path.
+func createAgentWorktree(id string) (string, error) {
+	project, branch, _ := strings.Cut(id, "/")
+	if branch == "" {
+		return "", fmt.Errorf("unknown agent: %s", id)
+	}
+	projectsDir, err := paths.ProjectsDir()
+	if err != nil {
+		return "", err
+	}
+	rootRepo := filepath.Join(projectsDir, project)
+	if _, err := os.Stat(rootRepo); err != nil {
+		return "", fmt.Errorf("unknown project: %s", project)
+	}
+	loc := &location.Location{RootRepo: rootRepo}
+	gitBranch := os.Getenv("WORK_BRANCH_PREFIX") + branch
+	wtPath, err := session.Create(loc, branch, gitBranch, false)
+	if err != nil {
+		return "", err
+	}
+	if resolved, err := filepath.EvalSymlinks(wtPath); err == nil {
+		wtPath = resolved
+	}
+	return wtPath, nil
+}
 
 func runCmd() *cobra.Command {
 	return &cobra.Command{
@@ -41,7 +69,10 @@ func runCmd() *cobra.Command {
 			if len(args) == 1 {
 				path, err := resolveAgentPath(args[0])
 				if err != nil {
-					return fmt.Errorf("%w (run `work mk` to create the worktree)", err)
+					path, err = createAgentWorktree(args[0])
+					if err != nil {
+						return err
+					}
 				}
 				if err := os.Chdir(path); err != nil {
 					return err
