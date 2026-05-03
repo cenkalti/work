@@ -5,7 +5,7 @@ import (
 	"os"
 	"slices"
 
-	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/domain"
 	taskpkg "github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
@@ -21,7 +21,7 @@ func treeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			tasksDir := paths.LocalTasksDir(cwd)
+			tasksDir := domain.LocalTasksDir(cwd)
 			var filterID string
 			if len(args) > 0 {
 				filterID = args[0]

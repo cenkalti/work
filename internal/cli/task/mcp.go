@@ -4,7 +4,7 @@ import (
 	"os"
 
 	mcpserver "github.com/cenkalti/work/internal/mcp"
-	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/spf13/cobra"
 )
@@ -19,7 +19,7 @@ func mcpCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			s := mcpserver.NewServer(paths.LocalTasksDir(cwd))
+			s := mcpserver.NewServer(domain.LocalTasksDir(cwd))
 			return server.NewStdioServer(s).Listen(cmd.Context(), os.Stdin, os.Stdout)
 		},
 	}

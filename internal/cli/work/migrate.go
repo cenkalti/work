@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -26,25 +26,25 @@ Worktree workspace symlinks are repointed to the new locations. Re-running is a 
 			if err != nil {
 				return err
 			}
-			if !loc.IsRoot() {
+			if loc.Worktree != nil {
 				return fmt.Errorf("must be run from the repo root")
 			}
-			return runMigrateSpace(loc.RootRepo)
+			return runMigrateSpace(loc.Repo)
 		},
 	}
 }
 
-func runMigrateSpace(root string) error {
-	if _, err := paths.EnsureProject(root); err != nil {
+func runMigrateSpace(repo domain.Repo) error {
+	if _, err := repo.EnsureProject(); err != nil {
 		return err
 	}
 
-	moved, repointed, skipped, err := migrateTaskWorkspaces(root)
+	moved, repointed, skipped, err := migrateTaskWorkspaces(repo)
 	if err != nil {
 		return err
 	}
 
-	rootMigrated, err := migrateRootWorkspace(root)
+	rootMigrated, err := migrateRootWorkspace(repo)
 	if err != nil {
 		return err
 	}
@@ -58,8 +58,8 @@ func runMigrateSpace(root string) error {
 	return nil
 }
 
-func migrateTaskWorkspaces(root string) (moved, repointed, skipped int, err error) {
-	oldRoot := filepath.Join(root, ".work", "space")
+func migrateTaskWorkspaces(repo domain.Repo) (moved, repointed, skipped int, err error) {
+	oldRoot := filepath.Join(repo.Path, ".work", "space")
 	entries, err := os.ReadDir(oldRoot)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -68,7 +68,7 @@ func migrateTaskWorkspaces(root string) (moved, repointed, skipped int, err erro
 		return 0, 0, 0, fmt.Errorf("reading old space dir: %w", err)
 	}
 
-	worktreeLinks, err := collectWorktreeWorkspaceLinks(root)
+	worktreeLinks, err := collectWorktreeWorkspaceLinks(repo)
 	if err != nil {
 		return 0, 0, 0, err
 	}
@@ -84,7 +84,8 @@ func migrateTaskWorkspaces(root string) (moved, repointed, skipped int, err erro
 			continue
 		}
 		oldPath := filepath.Join(oldRoot, task)
-		newPath := paths.Workspace(root, task)
+		newWt := domain.Worktree{RepoPath: repo.Path, Name: task}
+		newPath := newWt.WorkspacePath()
 
 		if _, err := os.Stat(newPath); err == nil {
 			fmt.Fprintf(os.Stderr, "skip %s: destination already exists at %s\n", task, newPath)
@@ -107,7 +108,7 @@ func migrateTaskWorkspaces(root string) (moved, repointed, skipped int, err erro
 			if target != oldPath {
 				continue
 			}
-			link := paths.WorkspaceLink(wtPath)
+			link := filepath.Join(wtPath, "workspace")
 			if err := os.Remove(link); err != nil {
 				fmt.Fprintf(os.Stderr, "warn: removing stale symlink at %s: %v\n", link, err)
 				continue
@@ -122,8 +123,8 @@ func migrateTaskWorkspaces(root string) (moved, repointed, skipped int, err erro
 	return moved, repointed, skipped, nil
 }
 
-func migrateRootWorkspace(root string) (bool, error) {
-	link := paths.WorkspaceLink(root)
+func migrateRootWorkspace(repo domain.Repo) (bool, error) {
+	link := repo.WorkspaceLink()
 	info, err := os.Lstat(link)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -138,7 +139,7 @@ func migrateRootWorkspace(root string) (bool, error) {
 		return false, fmt.Errorf("%s exists and is neither a symlink nor a directory", link)
 	}
 
-	dst, err := paths.RootWorkspace(root)
+	dst, err := repo.RootWorkspace()
 	if err != nil {
 		return false, err
 	}
@@ -169,8 +170,8 @@ func migrateRootWorkspace(root string) (bool, error) {
 // collectWorktreeWorkspaceLinks returns a map of worktree path → resolved
 // `workspace` symlink target for every worktree under <root>/.work/tree.
 // Entries whose `workspace` is missing or not a symlink are omitted.
-func collectWorktreeWorkspaceLinks(root string) (map[string]string, error) {
-	wtRoot := paths.WorktreeRoot(root)
+func collectWorktreeWorkspaceLinks(repo domain.Repo) (map[string]string, error) {
+	wtRoot := repo.WorktreeRoot()
 	entries, err := os.ReadDir(wtRoot)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -184,7 +185,7 @@ func collectWorktreeWorkspaceLinks(root string) (map[string]string, error) {
 			continue
 		}
 		wtPath := filepath.Join(wtRoot, e.Name())
-		link := paths.WorkspaceLink(wtPath)
+		link := filepath.Join(wtPath, "workspace")
 		target, err := os.Readlink(link)
 		if err != nil {
 			continue

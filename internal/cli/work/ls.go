@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/git"
-	"github.com/cenkalti/work/internal/paths"
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +21,7 @@ func lsCmd() *cobra.Command {
 				return err
 			}
 			// Outside any git repo: fall back to enumerating ~/projects/*.
-			worktrees, err := git.ListWorktrees(loc.RootRepo)
+			worktrees, err := git.ListWorktrees(loc.Repo.Path)
 			if err != nil {
 				return listAllProjects()
 			}
@@ -29,7 +29,7 @@ func lsCmd() *cobra.Command {
 			// Failure here means the repo has no .work/tree/ yet — it's a git repo but
 			// not adopted by work. Stay scoped to this repo (empty output) rather than
 			// spilling into other projects' worktrees.
-			wtRoot, err := filepath.EvalSymlinks(loc.WorktreeRoot())
+			wtRoot, err := filepath.EvalSymlinks(loc.Repo.WorktreeRoot())
 			if err != nil {
 				return nil
 			}
@@ -59,7 +59,7 @@ func listAllProjects() error {
 }
 
 func allProjectWorktrees() ([]string, error) {
-	projectsDir, err := paths.ProjectsDir()
+	projectsDir, err := domain.ProjectsDir()
 	if err != nil {
 		return nil, err
 	}

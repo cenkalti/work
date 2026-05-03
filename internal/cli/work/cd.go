@@ -6,9 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/git"
-	"github.com/cenkalti/work/internal/location"
-	"github.com/cenkalti/work/internal/paths"
 	"github.com/spf13/cobra"
 )
 
@@ -25,11 +24,11 @@ func cdCmd() *cobra.Command {
 			}
 
 			if len(args) == 0 {
-				fmt.Print(loc.RootRepo)
+				fmt.Print(loc.Repo.Path)
 				return nil
 			}
 
-			wtPath, err := resolveWorktreePath(loc, args[0])
+			wtPath, err := resolveWorktreePath(loc.Repo, args[0])
 			if err != nil {
 				return err
 			}
@@ -47,7 +46,7 @@ func worktreeCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
-	worktrees, err := git.ListWorktrees(loc.RootRepo)
+	worktrees, err := git.ListWorktrees(loc.Repo.Path)
 	if err != nil {
 		names, err := allProjectWorktrees()
 		if err != nil {
@@ -55,7 +54,7 @@ func worktreeCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 		}
 		return names, cobra.ShellCompDirectiveNoFileComp
 	}
-	wtRoot, err := filepath.EvalSymlinks(loc.WorktreeRoot())
+	wtRoot, err := filepath.EvalSymlinks(loc.Repo.WorktreeRoot())
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -72,18 +71,18 @@ func worktreeCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 	return names, cobra.ShellCompDirectiveNoFileComp
 }
 
-func resolveWorktreePath(loc *location.Location, name string) (string, error) {
-	wtPath := loc.WorktreePath(name)
-	if _, err := os.Stat(wtPath); err == nil {
-		return wtPath, nil
+func resolveWorktreePath(repo domain.Repo, name string) (string, error) {
+	wt := domain.Worktree{RepoPath: repo.Path, Name: name}
+	if _, err := os.Stat(wt.Path()); err == nil {
+		return wt.Path(), nil
 	}
 	project, branch, ok := strings.Cut(name, "/")
 	if ok {
-		projectsDir, err := paths.ProjectsDir()
+		projectsDir, err := domain.ProjectsDir()
 		if err != nil {
 			return "", err
 		}
-		wtPath = filepath.Join(projectsDir, project, ".work", "tree", branch)
+		wtPath := filepath.Join(projectsDir, project, ".work", "tree", branch)
 		if _, err := os.Stat(wtPath); err == nil {
 			return wtPath, nil
 		}

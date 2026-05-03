@@ -15,11 +15,11 @@ func idCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if loc.IsRoot() {
+			if loc.Worktree == nil {
 				fmt.Println(".")
 				return nil
 			}
-			fmt.Println(loc.Branch)
+			fmt.Println(loc.Worktree.Name)
 			return nil
 		},
 	}

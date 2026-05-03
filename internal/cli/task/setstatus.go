@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/domain"
 	taskpkg "github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
@@ -29,7 +29,7 @@ task set-status <id> completed   # mark task as completed`,
 			if err != nil {
 				return err
 			}
-			tasksDir := paths.LocalTasksDir(cwd)
+			tasksDir := domain.LocalTasksDir(cwd)
 			return runSet(tasksDir, id, status)
 		},
 	}

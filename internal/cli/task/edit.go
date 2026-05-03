@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/domain"
 	taskpkg "github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
@@ -24,7 +24,7 @@ func editCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			taskFile := taskpkg.File(paths.LocalTasksDir(cwd), args[0])
+			taskFile := taskpkg.File(domain.LocalTasksDir(cwd), args[0])
 			if _, err := os.Stat(taskFile); err != nil {
 				return fmt.Errorf("task %q not found", args[0])
 			}

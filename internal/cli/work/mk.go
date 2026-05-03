@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -30,7 +31,8 @@ Prints the worktree path on success.`,
 			}
 			name := args[0]
 			branch := os.Getenv("WORK_BRANCH_PREFIX") + name
-			wtPath, err := session.Create(loc, name, branch, noBranch)
+			wt := domain.Worktree{RepoPath: loc.Repo.Path, Name: name}
+			wtPath, err := session.Create(wt, branch, noBranch)
 			if err != nil {
 				return err
 			}

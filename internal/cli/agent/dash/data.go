@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/cenkalti/work/internal/agent"
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/git"
 	"github.com/cenkalti/work/internal/order"
-	"github.com/cenkalti/work/internal/paths"
 	"github.com/cenkalti/work/internal/slot"
 	"github.com/cenkalti/work/internal/task"
 	todopkg "github.com/cenkalti/work/internal/todo"
@@ -317,7 +317,8 @@ func taskProgress(root, branch string) (completed, total int, ok bool) {
 	if root == "" || branch == "" {
 		return 0, 0, false
 	}
-	if subs, err := task.LoadAll(paths.TasksDir(root, branch)); err == nil && len(subs) > 0 {
+	wt := domain.Worktree{RepoPath: root, Name: branch}
+	if subs, err := task.LoadAll(wt.TasksDir()); err == nil && len(subs) > 0 {
 		for _, t := range subs {
 			if t.Status == task.StatusCompleted {
 				completed++
@@ -325,11 +326,12 @@ func taskProgress(root, branch string) (completed, total int, ok bool) {
 		}
 		return completed, len(subs), true
 	}
-	parent := paths.ParentBranch(branch)
+	parent := domain.ParentBranchName(branch)
 	if parent == "" {
 		return 0, 0, false
 	}
-	t, err := task.Load(paths.TasksDir(root, parent), paths.BranchID(branch))
+	parentWt := domain.Worktree{RepoPath: root, Name: parent}
+	t, err := task.Load(parentWt.TasksDir(), domain.BranchID(branch))
 	if err != nil {
 		return 0, 0, false
 	}

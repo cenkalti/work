@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/git"
-	"github.com/cenkalti/work/internal/paths"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,7 @@ Use "." to refer to the root repo (no task).`,
 			if err != nil {
 				return err
 			}
-			if !loc.IsRoot() {
+			if loc.Worktree != nil {
 				return fmt.Errorf("must be run from the repo root")
 			}
 
@@ -57,25 +57,25 @@ Use "." to refer to the root repo (no task).`,
 				return fmt.Errorf("source and destination are the same")
 			}
 
-			root := loc.RootRepo
+			repo := loc.Repo
 
 			// Preflight checks.
-			if err := validateMove(root, src, dst); err != nil {
+			if err := validateMove(repo, src, dst); err != nil {
 				return err
 			}
 
 			// Move from root (src == "")
 			if src == "" {
-				return moveFromRoot(root, dst)
+				return moveFromRoot(repo, dst)
 			}
 
 			// Move to root (dst == "")
 			if dst == "" {
-				return moveToRoot(root, src)
+				return moveToRoot(repo, src)
 			}
 
 			// Collect all branches that need renaming (src + children).
-			branches, err := collectBranches(root, src)
+			branches, err := collectBranches(repo, src)
 			if err != nil {
 				return err
 			}
@@ -83,13 +83,13 @@ Use "." to refer to the root repo (no task).`,
 			// General move: rename branches, move worktrees, move workspaces.
 			for _, oldBranch := range branches {
 				newBranch := dst + strings.TrimPrefix(oldBranch, src)
-				if err := moveTask(root, oldBranch, newBranch); err != nil {
+				if err := moveTask(repo, oldBranch, newBranch); err != nil {
 					return err
 				}
 			}
 
 			// Move task JSON from old parent to new parent.
-			if err := moveTaskJSON(root, src, dst); err != nil {
+			if err := moveTaskJSON(repo, src, dst); err != nil {
 				return err
 			}
 
@@ -107,11 +107,11 @@ func mvCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]s
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
-	worktrees, err := git.ListWorktrees(loc.RootRepo)
+	worktrees, err := git.ListWorktrees(loc.Repo.Path)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
-	wtRoot, err := filepath.EvalSymlinks(loc.WorktreeRoot())
+	wtRoot, err := filepath.EvalSymlinks(loc.Repo.WorktreeRoot())
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -129,49 +129,44 @@ func mvCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]s
 }
 
 // validateMove checks preconditions before performing any move operation.
-func validateMove(root, src, dst string) error {
+func validateMove(repo domain.Repo, src, dst string) error {
+	dstWt := domain.Worktree{RepoPath: repo.Path, Name: dst}
 	if src == "" {
 		// Moving from root: workspace must exist.
-		wsPath := paths.WorkspaceLink(root)
-		if _, err := os.Lstat(wsPath); err != nil {
+		if _, err := os.Lstat(repo.WorkspaceLink()); err != nil {
 			return fmt.Errorf("no workspace found at root")
 		}
 		// Destination workspace must not exist.
-		dstSpace := paths.Workspace(root, dst)
-		if _, err := os.Stat(dstSpace); err == nil {
+		if _, err := os.Stat(dstWt.WorkspacePath()); err == nil {
 			return fmt.Errorf("destination workspace already exists: %s", dst)
 		}
 		// Destination worktree must not exist.
-		dstWT := paths.Worktree(root, dst)
-		if _, err := os.Stat(dstWT); err == nil {
+		if _, err := os.Stat(dstWt.Path()); err == nil {
 			return fmt.Errorf("destination worktree already exists: %s", dst)
 		}
 		return nil
 	}
 
+	srcWt := domain.Worktree{RepoPath: repo.Path, Name: src}
 	if dst == "" {
 		// Moving to root: source workspace must exist.
-		srcSpace := paths.Workspace(root, src)
-		if _, err := os.Stat(srcSpace); err != nil {
+		if _, err := os.Stat(srcWt.WorkspacePath()); err != nil {
 			return fmt.Errorf("workspace not found for %s", src)
 		}
 		// Root workspace must not exist.
-		wsPath := paths.WorkspaceLink(root)
-		if _, err := os.Lstat(wsPath); err == nil {
+		if _, err := os.Lstat(repo.WorkspaceLink()); err == nil {
 			return fmt.Errorf("workspace already exists at root; remove it first")
 		}
 		return nil
 	}
 
 	// General move: source workspace or worktree must exist.
-	srcSpace := paths.Workspace(root, src)
-	srcWT := paths.Worktree(root, src)
 	srcSpaceExists := false
 	srcWTExists := false
-	if _, err := os.Stat(srcSpace); err == nil {
+	if _, err := os.Stat(srcWt.WorkspacePath()); err == nil {
 		srcSpaceExists = true
 	}
-	if _, err := os.Stat(srcWT); err == nil {
+	if _, err := os.Stat(srcWt.Path()); err == nil {
 		srcWTExists = true
 	}
 	if !srcSpaceExists && !srcWTExists {
@@ -179,13 +174,11 @@ func validateMove(root, src, dst string) error {
 	}
 
 	// Destination workspace must not exist.
-	dstSpace := paths.Workspace(root, dst)
-	if _, err := os.Stat(dstSpace); err == nil {
+	if _, err := os.Stat(dstWt.WorkspacePath()); err == nil {
 		return fmt.Errorf("destination workspace already exists: %s", dst)
 	}
 	// Destination worktree must not exist.
-	dstWT := paths.Worktree(root, dst)
-	if _, err := os.Stat(dstWT); err == nil {
+	if _, err := os.Stat(dstWt.Path()); err == nil {
 		return fmt.Errorf("destination worktree already exists: %s", dst)
 	}
 
@@ -194,16 +187,15 @@ func validateMove(root, src, dst string) error {
 
 // collectBranches returns the src branch and all child branches (src.*).
 // For src == "", returns nil (root has no branch).
-func collectBranches(root, src string) ([]string, error) {
+func collectBranches(repo domain.Repo, src string) ([]string, error) {
 	if src == "" {
 		return nil, nil
 	}
-	worktrees, err := git.ListWorktrees(root)
+	worktrees, err := git.ListWorktrees(repo.Path)
 	if err != nil {
 		return nil, err
 	}
-	wtRoot := paths.WorktreeRoot(root)
-	prefix := wtRoot
+	prefix := repo.WorktreeRoot()
 	if !strings.HasSuffix(prefix, string(filepath.Separator)) {
 		prefix += string(filepath.Separator)
 	}
@@ -225,40 +217,38 @@ func collectBranches(root, src string) ([]string, error) {
 }
 
 // moveTask renames a git branch, moves its worktree, and moves its workspace.
-func moveTask(root, oldBranch, newBranch string) error {
+func moveTask(repo domain.Repo, oldBranch, newBranch string) error {
 	// Skip the branch rename if the old branch equals the new branch with the
 	// WORK_BRANCH_PREFIX prepended — the user is dropping the prefix from the
 	// worktree path while leaving the underlying branch name alone.
 	if prefix := os.Getenv("WORK_BRANCH_PREFIX"); prefix == "" || prefix+newBranch != oldBranch {
-		if err := git.RenameBranch(root, oldBranch, newBranch); err != nil {
+		if err := git.RenameBranch(repo.Path, oldBranch, newBranch); err != nil {
 			return fmt.Errorf("renaming branch %s → %s: %w", oldBranch, newBranch, err)
 		}
 	}
 
+	oldWt := domain.Worktree{RepoPath: repo.Path, Name: oldBranch}
+	newWt := domain.Worktree{RepoPath: repo.Path, Name: newBranch}
+
 	// Move worktree on disk.
-	oldWT := paths.Worktree(root, oldBranch)
-	newWT := paths.Worktree(root, newBranch)
-	if _, err := os.Stat(oldWT); err == nil {
-		if err := git.MoveWorktree(root, oldWT, newWT); err != nil {
+	if _, err := os.Stat(oldWt.Path()); err == nil {
+		if err := git.MoveWorktree(repo.Path, oldWt.Path(), newWt.Path()); err != nil {
 			return fmt.Errorf("moving worktree: %w", err)
 		}
 		// Update workspace symlink in the worktree.
-		newSpace := paths.Workspace(root, newBranch)
-		wsLink := paths.WorkspaceLink(newWT)
+		wsLink := newWt.WorkspaceLink()
 		if err := os.Remove(wsLink); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("removing old workspace symlink: %w", err)
 		}
-		if err := os.Symlink(newSpace, wsLink); err != nil {
+		if err := os.Symlink(newWt.WorkspacePath(), wsLink); err != nil {
 			return fmt.Errorf("updating workspace symlink: %w", err)
 		}
 	}
 
 	// Move workspace on disk.
-	oldSpace := paths.Workspace(root, oldBranch)
-	newSpace := paths.Workspace(root, newBranch)
-	if _, err := os.Stat(oldSpace); err == nil {
-		if err := os.Rename(oldSpace, newSpace); err != nil {
-			return fmt.Errorf("moving workspace %s → %s: %w", oldSpace, newSpace, err)
+	if _, err := os.Stat(oldWt.WorkspacePath()); err == nil {
+		if err := os.Rename(oldWt.WorkspacePath(), newWt.WorkspacePath()); err != nil {
+			return fmt.Errorf("moving workspace %s → %s: %w", oldWt.WorkspacePath(), newWt.WorkspacePath(), err)
 		}
 	}
 
@@ -266,11 +256,11 @@ func moveTask(root, oldBranch, newBranch string) error {
 }
 
 // moveTaskJSON moves the task JSON file from the old parent's tasks dir to the new parent's tasks dir.
-func moveTaskJSON(root, oldBranch, newBranch string) error {
-	oldParent := paths.ParentBranch(oldBranch)
-	newParent := paths.ParentBranch(newBranch)
-	oldID := paths.BranchID(oldBranch)
-	newID := paths.BranchID(newBranch)
+func moveTaskJSON(repo domain.Repo, oldBranch, newBranch string) error {
+	oldParent := domain.ParentBranchName(oldBranch)
+	newParent := domain.ParentBranchName(newBranch)
+	oldID := domain.BranchID(oldBranch)
+	newID := domain.BranchID(newBranch)
 
 	if oldParent == "" && newParent == "" {
 		return nil // root -> root rename, no task JSON
@@ -278,12 +268,14 @@ func moveTaskJSON(root, oldBranch, newBranch string) error {
 
 	// Source task file.
 	if oldParent != "" {
-		oldFile := filepath.Join(paths.TasksDir(root, oldParent), oldID+".yaml")
+		oldParentWt := domain.Worktree{RepoPath: repo.Path, Name: oldParent}
+		oldFile := filepath.Join(oldParentWt.TasksDir(), oldID+".yaml")
 		if _, err := os.Stat(oldFile); err != nil {
 			return nil // no task file to move
 		}
 		if newParent != "" {
-			newTasksDir := paths.TasksDir(root, newParent)
+			newParentWt := domain.Worktree{RepoPath: repo.Path, Name: newParent}
+			newTasksDir := newParentWt.TasksDir()
 			if err := os.MkdirAll(newTasksDir, 0755); err != nil {
 				return err
 			}
@@ -298,17 +290,18 @@ func moveTaskJSON(root, oldBranch, newBranch string) error {
 }
 
 // moveFromRoot moves the root workspace (./workspace) into a named task.
-func moveFromRoot(root, dst string) error {
-	wsPath := paths.WorkspaceLink(root)
+func moveFromRoot(repo domain.Repo, dst string) error {
+	wsPath := repo.WorkspaceLink()
 	info, err := os.Lstat(wsPath)
 	if err != nil {
 		return fmt.Errorf("no workspace found at root: %w", err)
 	}
 
-	if _, err := paths.EnsureProject(root); err != nil {
+	if _, err := repo.EnsureProject(); err != nil {
 		return err
 	}
-	dstSpace := paths.Workspace(root, dst)
+	dstWt := domain.Worktree{RepoPath: repo.Path, Name: dst}
+	dstSpace := dstWt.WorkspacePath()
 	if err := os.MkdirAll(filepath.Dir(dstSpace), 0755); err != nil {
 		return err
 	}
@@ -320,7 +313,7 @@ func moveFromRoot(root, dst string) error {
 			return err
 		}
 		if !filepath.IsAbs(target) {
-			target = filepath.Join(root, target)
+			target = filepath.Join(repo.Path, target)
 		}
 		if err := os.Remove(wsPath); err != nil {
 			return err
@@ -338,13 +331,12 @@ func moveFromRoot(root, dst string) error {
 	}
 
 	// Create worktree and branch for the destination.
-	wtPath := paths.Worktree(root, dst)
-	if _, err := git.CreateWorktree(root, wtPath, dst, git.DefaultBranch(root)); err != nil {
+	if _, err := git.CreateWorktree(repo.Path, dstWt.Path(), dst, git.DefaultBranch(repo.Path)); err != nil {
 		return fmt.Errorf("creating worktree: %w", err)
 	}
 
 	// Create workspace symlink in the new worktree.
-	wsLink := paths.WorkspaceLink(wtPath)
+	wsLink := dstWt.WorkspaceLink()
 	if err := os.Remove(wsLink); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("removing old workspace symlink: %w", err)
 	}
@@ -357,21 +349,19 @@ func moveFromRoot(root, dst string) error {
 }
 
 // moveToRoot moves a named task's workspace to the root workspace (./workspace).
-func moveToRoot(root, src string) error {
-	srcSpace := paths.Workspace(root, src)
-	wsPath := paths.WorkspaceLink(root)
+func moveToRoot(repo domain.Repo, src string) error {
+	srcWt := domain.Worktree{RepoPath: repo.Path, Name: src}
 
 	// Move workspace to root.
-	if err := os.Rename(srcSpace, wsPath); err != nil {
+	if err := os.Rename(srcWt.WorkspacePath(), repo.WorkspaceLink()); err != nil {
 		return err
 	}
 
 	// Clean up worktree and branch if they exist.
-	wtPath := paths.Worktree(root, src)
-	if err := git.RemoveWorktreeIfExists(root, wtPath); err != nil {
+	if err := git.RemoveWorktreeIfExists(repo.Path, srcWt.Path()); err != nil {
 		return fmt.Errorf("removing worktree: %w", err)
 	}
-	if err := git.DeleteBranchIfExists(root, src); err != nil {
+	if err := git.DeleteBranchIfExists(repo.Path, src); err != nil {
 		return fmt.Errorf("deleting branch: %w", err)
 	}
 

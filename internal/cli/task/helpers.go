@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/domain"
 	taskpkg "github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
@@ -19,7 +19,7 @@ func taskIDCompletionFunc(cmd *cobra.Command, args []string, toComplete string) 
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	tasksDir := paths.LocalTasksDir(cwd)
+	tasksDir := domain.LocalTasksDir(cwd)
 	tasks, err := taskpkg.LoadAll(tasksDir)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp

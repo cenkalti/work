@@ -3,7 +3,7 @@ package task
 import (
 	"fmt"
 	"os"
-	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/domain"
 	taskpkg "github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
@@ -19,7 +19,7 @@ func rmCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			tasksDir := paths.LocalTasksDir(cwd)
+			tasksDir := domain.LocalTasksDir(cwd)
 			id := args[0]
 			taskFile := taskpkg.File(tasksDir, id)
 			if err := os.Remove(taskFile); err != nil {

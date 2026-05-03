@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/domain"
 	taskpkg "github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -21,7 +21,7 @@ func showCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			tasksDir := paths.LocalTasksDir(cwd)
+			tasksDir := domain.LocalTasksDir(cwd)
 			return runShow(tasksDir, args[0])
 		},
 	}

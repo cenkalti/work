@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/domain"
 	taskpkg "github.com/cenkalti/work/internal/task"
 	"github.com/spf13/cobra"
 )
@@ -47,7 +47,7 @@ task ls --completed  # completed tasks`,
 			if err != nil {
 				return err
 			}
-			tasksDir := paths.LocalTasksDir(cwd)
+			tasksDir := domain.LocalTasksDir(cwd)
 			return listTasks(tasksDir, flagReady, flagActive, flagBlocked, flagPending, flagCompleted)
 		},
 	}

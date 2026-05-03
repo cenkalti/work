@@ -13,8 +13,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/work/internal/agent"
-	"github.com/cenkalti/work/internal/location"
-	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/session"
 	"github.com/cenkalti/work/internal/wezterm"
 	"github.com/google/uuid"
@@ -28,7 +27,7 @@ func createAgentWorktree(id string) (string, error) {
 	if branch == "" {
 		return "", fmt.Errorf("unknown agent: %s", id)
 	}
-	projectsDir, err := paths.ProjectsDir()
+	projectsDir, err := domain.ProjectsDir()
 	if err != nil {
 		return "", err
 	}
@@ -36,9 +35,9 @@ func createAgentWorktree(id string) (string, error) {
 	if _, err := os.Stat(rootRepo); err != nil {
 		return "", fmt.Errorf("unknown project: %s", project)
 	}
-	loc := &location.Location{RootRepo: rootRepo}
+	wt := domain.Worktree{RepoPath: rootRepo, Name: branch}
 	gitBranch := os.Getenv("WORK_BRANCH_PREFIX") + branch
-	wtPath, err := session.Create(loc, branch, gitBranch, false)
+	wtPath, err := session.Create(wt, gitBranch, false)
 	if err != nil {
 		return "", err
 	}
@@ -129,19 +128,20 @@ func claudeSessionExists(worktreePath, sessionID string) bool {
 // loadOrCreateAgent returns the agent record for the current worktree, creating
 // one if needed.
 func loadOrCreateAgent() (*agent.Record, error) {
-	loc, err := location.Detect()
+	repo, wt, err := domain.Detect()
 	if err != nil {
 		return nil, err
 	}
 
-	var worktreePath string
-	if loc.IsRoot() {
-		worktreePath = loc.RootRepo
-		if _, err := paths.EnsureRootWorkspace(loc.RootRepo); err != nil {
+	var worktreePath, branchName string
+	if wt == nil {
+		worktreePath = repo.Path
+		if _, err := repo.EnsureRootWorkspace(); err != nil {
 			return nil, err
 		}
 	} else {
-		worktreePath = paths.Worktree(loc.RootRepo, loc.Branch)
+		worktreePath = wt.Path()
+		branchName = wt.Name
 	}
 	resolved, err := filepath.EvalSymlinks(worktreePath)
 	if err == nil {
@@ -162,21 +162,21 @@ func loadOrCreateAgent() (*agent.Record, error) {
 	}
 	now := time.Now().UTC()
 
-	project := filepath.Base(loc.RootRepo)
-	taskID := loc.Branch
+	project := repo.ProjectName()
+	taskID := branchName
 	if taskID == "" {
 		taskID = project
 	} else {
-		taskID = paths.BranchID(loc.Branch)
+		taskID = domain.BranchID(branchName)
 	}
 
 	return &agent.Record{
 		ID:           id.String(),
 		Name:         taskID,
 		Project:      project,
-		ProjectRoot:  loc.RootRepo,
+		ProjectRoot:  repo.Path,
 		TaskID:       taskID,
-		Branch:       loc.Branch,
+		Branch:       branchName,
 		WorktreePath: worktreePath,
 		Status:       agent.StatusIdle,
 		CreatedAt:    now,

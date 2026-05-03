@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	agentpkg "github.com/cenkalti/work/internal/agent"
-	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/wezterm"
 	"github.com/spf13/cobra"
 )
@@ -58,7 +58,7 @@ func jumpCmd() *cobra.Command {
 }
 
 func resolveAgentPath(id string) (string, error) {
-	projectsDir, err := paths.ProjectsDir()
+	projectsDir, err := domain.ProjectsDir()
 	if err != nil {
 		return "", err
 	}

@@ -6,32 +6,32 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cenkalti/work/internal/paths"
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/task"
 )
 
-// isWorkManaged reports whether the root repo has a .work/ directory.
-func isWorkManaged(rootRepo string) bool {
-	_, err := os.Stat(filepath.Join(rootRepo, ".work"))
+// isWorkManaged reports whether the repo has a .work/ directory.
+func isWorkManaged(repo domain.Repo) bool {
+	_, err := os.Stat(filepath.Join(repo.Path, ".work"))
 	return err == nil
 }
 
-func printTaskContext(rootRepo, branch string) error {
-	parentBranch := paths.ParentBranch(branch)
-	taskID := paths.BranchID(branch)
+func printTaskContext(wt domain.Worktree) error {
+	parentName := domain.ParentBranchName(wt.Name)
+	taskID := domain.BranchID(wt.Name)
 
-	if parentBranch == "" {
-		printRootTaskContext(branch)
+	if parentName == "" {
+		printRootTaskContext(wt.Name)
 		return nil
 	}
 
-	tasksDir := paths.TasksDir(rootRepo, parentBranch)
-	t, err := task.Load(tasksDir, taskID)
+	parent := domain.Worktree{RepoPath: wt.RepoPath, Name: parentName}
+	t, err := task.Load(parent.TasksDir(), taskID)
 	if err != nil {
 		return err
 	}
 
-	parentContext := readFileContents(filepath.Join(paths.Workspace(rootRepo, parentBranch), "plan.md"))
+	parentContext := readFileContents(filepath.Join(parent.WorkspacePath(), "plan.md"))
 	printChildTaskContext(parentContext, t)
 	return nil
 }

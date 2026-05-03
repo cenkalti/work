@@ -12,8 +12,8 @@ import (
 	"time"
 
 	agentpkg "github.com/cenkalti/work/internal/agent"
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/inbox"
-	"github.com/cenkalti/work/internal/location"
 	"github.com/spf13/cobra"
 )
 
@@ -97,14 +97,14 @@ func handleSessionStart(p *hookPayload) error {
 	}); err != nil {
 		return err
 	}
-	loc, err := location.Detect()
+	repo, wt, err := domain.Detect()
 	if err != nil {
 		return err
 	}
-	if loc.IsRoot() || !isWorkManaged(loc.RootRepo) {
+	if wt == nil || !isWorkManaged(repo) {
 		return nil
 	}
-	return printTaskContext(loc.RootRepo, loc.Branch)
+	return printTaskContext(*wt)
 }
 
 func handleSessionEnd(p *hookPayload) error {
@@ -185,7 +185,7 @@ func handleNotification(p *hookPayload) error {
 	}); err != nil {
 		return err
 	}
-	loc, err := location.Detect()
+	repo, _, err := domain.Detect()
 	if err != nil {
 		return err
 	}
@@ -197,11 +197,10 @@ func handleNotification(p *hookPayload) error {
 	if err != nil {
 		resolved = cwd
 	}
-	project := filepath.Base(loc.RootRepo)
+	project := repo.ProjectName()
 	subpath := ""
-	if resolved != loc.RootRepo {
-		wtRoot := filepath.Join(loc.RootRepo, ".work", "tree")
-		if wtRootResolved, err := filepath.EvalSymlinks(wtRoot); err == nil {
+	if resolved != repo.Path {
+		if wtRootResolved, err := filepath.EvalSymlinks(repo.WorktreeRoot()); err == nil {
 			if rel, ok := strings.CutPrefix(resolved, wtRootResolved+string(filepath.Separator)); ok {
 				subpath = rel
 			}

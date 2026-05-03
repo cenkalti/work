@@ -7,9 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/git"
-	"github.com/cenkalti/work/internal/location"
-	"github.com/cenkalti/work/internal/paths"
 	"github.com/spf13/cobra"
 )
 
@@ -31,20 +30,22 @@ The task workspace at ~/.work/space/<project>/<task>/ is preserved unless it is 
 			if err != nil {
 				return err
 			}
+			repo := loc.Repo
 			branch := args[0]
 			if project, sub, ok := strings.Cut(branch, "/"); ok {
-				projectsDir, err := paths.ProjectsDir()
+				projectsDir, err := domain.ProjectsDir()
 				if err != nil {
 					return err
 				}
 				projectPath := filepath.Join(projectsDir, project)
 				if info, err := os.Stat(projectPath); err == nil && info.IsDir() {
-					loc = &location.Location{RootRepo: projectPath}
+					repo = domain.Repo{Path: projectPath}
 					branch = sub
 				}
 			}
-			taskID := paths.BranchID(branch)
-			wtPath := loc.WorktreePath(branch)
+			taskID := domain.BranchID(branch)
+			wt := domain.Worktree{RepoPath: repo.Path, Name: branch}
+			wtPath := wt.Path()
 
 			if !yes && isTerminal() {
 				fmt.Printf("Remove task %s and its worktree? [y/N] ", taskID)
@@ -56,13 +57,13 @@ The task workspace at ~/.work/space/<project>/<task>/ is preserved unless it is 
 				}
 			}
 
-			if err := git.RemoveWorktreeIfExists(loc.RootRepo, wtPath); err != nil {
+			if err := git.RemoveWorktreeIfExists(repo.Path, wtPath); err != nil {
 				return fmt.Errorf("remove worktree: %w", err)
 			}
-			if err := git.DeleteBranchIfExists(loc.RootRepo, branch); err != nil {
+			if err := git.DeleteBranchIfExists(repo.Path, branch); err != nil {
 				return fmt.Errorf("delete branch: %w", err)
 			}
-			if removed, err := removeEmptyWorkspace(loc.RootRepo, branch); err != nil {
+			if removed, err := removeEmptyWorkspace(wt); err != nil {
 				fmt.Fprintf(os.Stderr, "warn: workspace cleanup: %v\n", err)
 			} else if removed {
 				fmt.Printf("Task %s removed (workspace was empty).\n", taskID)
@@ -87,8 +88,8 @@ func isTerminal() bool {
 
 // removeEmptyWorkspace removes the task's workspace dir if it has no
 // content beyond `.DS_Store` (macOS auto-clutter). Returns true if removed.
-func removeEmptyWorkspace(root, branch string) (bool, error) {
-	wsPath := paths.Workspace(root, branch)
+func removeEmptyWorkspace(wt domain.Worktree) (bool, error) {
+	wsPath := wt.WorkspacePath()
 	entries, err := os.ReadDir(wsPath)
 	if err != nil {
 		if os.IsNotExist(err) {
