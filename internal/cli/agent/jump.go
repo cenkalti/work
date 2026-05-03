@@ -57,12 +57,8 @@ func jumpCmd() *cobra.Command {
 }
 
 func resolveAgentPath(id string) (string, error) {
-	projectsDir, err := domain.ProjectsDir()
-	if err != nil {
-		return "", err
-	}
 	project, branch, _ := strings.Cut(id, "/")
-	projectPath := filepath.Join(projectsDir, project)
+	projectPath := filepath.Join(domain.ProjectsDir(), project)
 	path := projectPath
 	if branch != "" {
 		path = filepath.Join(projectPath, ".work", "tree", branch)

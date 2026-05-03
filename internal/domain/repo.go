@@ -21,11 +21,7 @@ func (r Repo) ProjectName() string {
 // ProjectDir is the per-project workspace directory:
 // $HOME/.work/space/<project-name>.
 func (r Repo) ProjectDir() (string, error) {
-	wr, err := WorkspaceRoot()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(wr, r.ProjectName()), nil
+	return filepath.Join(WorkspaceRoot(), r.ProjectName()), nil
 }
 
 // WorktreeRoot returns the root directory containing all worktrees:

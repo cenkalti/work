@@ -59,10 +59,7 @@ func listAllProjects() error {
 }
 
 func allProjectWorktrees() ([]string, error) {
-	projectsDir, err := domain.ProjectsDir()
-	if err != nil {
-		return nil, err
-	}
+	projectsDir := domain.ProjectsDir()
 	entries, err := os.ReadDir(projectsDir)
 	if err != nil {
 		return nil, err

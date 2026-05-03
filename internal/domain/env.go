@@ -8,25 +8,25 @@ import (
 
 // ProjectsDir returns the root directory containing all projects.
 // Honors WORK_PROJECTS_DIR, falling back to $HOME/projects.
-func ProjectsDir() (string, error) {
+func ProjectsDir() string {
 	if dir := os.Getenv("WORK_PROJECTS_DIR"); dir != "" {
-		return dir, nil
+		return dir
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("resolving projects dir: %w", err)
+		panic(fmt.Errorf("resolving projects dir: %w", err))
 	}
-	return filepath.Join(home, "projects"), nil
+	return filepath.Join(home, "projects")
 }
 
 // WorkspaceRoot returns $HOME/.work/space, the parent of every project's
 // workspaces. The whole tree under here is intended to be backed up.
-func WorkspaceRoot() (string, error) {
+func WorkspaceRoot() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("resolving workspace root: %w", err)
+		panic(fmt.Errorf("resolving workspace root: %w", err))
 	}
-	return filepath.Join(home, ".work", "space"), nil
+	return filepath.Join(home, ".work", "space")
 }
 
 // LocalTasksDir returns ./workspace/tasks under cwd. Used by `task` CLI

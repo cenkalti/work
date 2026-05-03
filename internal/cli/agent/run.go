@@ -26,11 +26,7 @@ func createAgentWorktree(id string) (string, error) {
 	if branch == "" {
 		return "", fmt.Errorf("unknown agent: %s", id)
 	}
-	projectsDir, err := domain.ProjectsDir()
-	if err != nil {
-		return "", err
-	}
-	rootRepo := filepath.Join(projectsDir, project)
+	rootRepo := filepath.Join(domain.ProjectsDir(), project)
 	if _, err := os.Stat(rootRepo); err != nil {
 		return "", fmt.Errorf("unknown project: %s", project)
 	}

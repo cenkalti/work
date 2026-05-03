@@ -33,11 +33,7 @@ The task workspace at ~/.work/space/<project>/<task>/ is preserved unless it is 
 			repo := loc.Repo
 			branch := args[0]
 			if project, sub, ok := strings.Cut(branch, "/"); ok {
-				projectsDir, err := domain.ProjectsDir()
-				if err != nil {
-					return err
-				}
-				projectPath := filepath.Join(projectsDir, project)
+				projectPath := filepath.Join(domain.ProjectsDir(), project)
 				if info, err := os.Stat(projectPath); err == nil && info.IsDir() {
 					repo = domain.Repo{Path: projectPath}
 					branch = sub

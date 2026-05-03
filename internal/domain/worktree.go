@@ -27,12 +27,7 @@ func (w Worktree) Path() string {
 // WorkspacePath is the per-task workspace directory:
 // $HOME/.work/space/<project>/<name>.
 func (w Worktree) WorkspacePath() string {
-	wr, err := WorkspaceRoot()
-	if err != nil {
-		// Fall back to a sentinel that fails loudly when used.
-		return filepath.Join("/invalid-workspace-root", w.Repo().ProjectName(), w.Name)
-	}
-	return filepath.Join(wr, w.Repo().ProjectName(), w.Name)
+	return filepath.Join(WorkspaceRoot(), w.Repo().ProjectName(), w.Name)
 }
 
 // TasksDir is the subtasks directory inside the workspace.

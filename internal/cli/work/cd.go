@@ -78,11 +78,7 @@ func resolveWorktreePath(repo domain.Repo, name string) (string, error) {
 	}
 	project, branch, ok := strings.Cut(name, "/")
 	if ok {
-		projectsDir, err := domain.ProjectsDir()
-		if err != nil {
-			return "", err
-		}
-		wtPath := filepath.Join(projectsDir, project, ".work", "tree", branch)
+		wtPath := filepath.Join(domain.ProjectsDir(), project, ".work", "tree", branch)
 		if _, err := os.Stat(wtPath); err == nil {
 			return wtPath, nil
 		}
