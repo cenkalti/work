@@ -1,10 +1,7 @@
 package domain
 
 import (
-	"fmt"
-	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
 // Worktree is a directory under <repo>/.work/tree/<name>/.
@@ -46,19 +43,4 @@ func (w Worktree) TasksDir() string {
 // WorkspaceLink is the path to the workspace symlink inside the worktree.
 func (w Worktree) WorkspaceLink() string {
 	return filepath.Join(w.Path(), "workspace")
-}
-
-// Branch returns the currently checked-out branch by querying git. The
-// returned Branch.Name may diverge from Worktree.Name.
-func (w Worktree) Branch() (Branch, error) {
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	cmd.Dir = w.Path()
-	out, err := cmd.Output()
-	if err != nil {
-		return Branch{}, fmt.Errorf("git rev-parse --abbrev-ref HEAD: %w", err)
-	}
-	return Branch{
-		RepoPath: w.RepoPath,
-		Name:     strings.TrimSpace(string(out)),
-	}, nil
 }

@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cenkalti/work/internal/agent"
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/inbox"
 	"github.com/spf13/cobra"
 )
@@ -65,7 +65,7 @@ func printInbox(w io.Writer, hyperlinks bool) error {
 	if err != nil {
 		return err
 	}
-	running := agent.RunningSessionIDs()
+	running := domain.RunningSessionIDs()
 	live := msgs[:0]
 	for _, msg := range msgs {
 		if _, ok := running[strings.ToLower(msg.SessionID)]; !ok {

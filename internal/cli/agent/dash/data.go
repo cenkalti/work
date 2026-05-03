@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cenkalti/work/internal/agent"
 	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/git"
 	"github.com/cenkalti/work/internal/order"
@@ -126,7 +125,7 @@ func loadDirtyCmd(rows []Row) tea.Cmd {
 }
 
 func loadRows(showArchived bool) ([]Row, error) {
-	recs, err := agent.List()
+	recs, err := domain.ListAgents()
 	if err != nil {
 		return nil, err
 	}
@@ -149,10 +148,10 @@ func loadRows(showArchived bool) ([]Row, error) {
 	rows := make([]Row, 0, len(recs))
 	for _, r := range recs {
 		row := Row{
-			AgentID:           r.ID,
+			AgentID:           r.UUID,
 			WorktreePath:      r.WorktreePath,
 			Status:            r.Status,
-			Project:           r.Project,
+			Project:           r.Repo().ProjectName(),
 			Name:              r.Name,
 			CurrentTool:       r.CurrentTool,
 			HasNotification:   r.NotificationCount > 0,
@@ -168,7 +167,7 @@ func loadRows(showArchived bool) ([]Row, error) {
 		}
 		// Slot lookup by UUID.
 		for k, v := range slots {
-			if v == r.ID {
+			if v == r.UUID {
 				row.Slot = k
 				row.HasSlot = true
 				break
@@ -176,13 +175,13 @@ func loadRows(showArchived bool) ([]Row, error) {
 		}
 		// Liveness vs. crashed: record claims a running-style status but no
 		// matching session file is present.
-		if r.CurrentSessionID != "" {
-			_, alive := sessions[r.CurrentSessionID]
+		if r.SessionID != "" {
+			_, alive := sessions[r.SessionID]
 			row.Attached = alive
-			if !alive && (r.Status == agent.StatusRunning || r.Status == agent.StatusToolRunning || r.Status == agent.StatusAwaitingInput) {
+			if !alive && (r.Status == domain.StatusRunning || r.Status == domain.StatusToolRunning || r.Status == domain.StatusAwaitingInput) {
 				row.Crashed = true
 			}
-			row.Session = claudeSessionName(r.WorktreePath, r.CurrentSessionID)
+			row.Session = claudeSessionName(r.WorktreePath, r.SessionID)
 		}
 		// Worktree existence.
 		if r.WorktreePath != "" {
@@ -212,7 +211,7 @@ func loadRows(showArchived bool) ([]Row, error) {
 				row.Dirty = d
 			}
 		}
-		if c, t, ok := taskProgress(r.ProjectRoot, r.Branch); ok {
+		if c, t, ok := taskProgress(r.RepoPath, r.WorktreeName); ok {
 			row.HasTask = true
 			row.TasksCompleted = c
 			row.TasksTotal = t

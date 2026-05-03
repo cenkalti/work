@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cenkalti/work/internal/agent"
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/order"
 	"github.com/cenkalti/work/internal/slot"
 	"github.com/cenkalti/work/internal/wezterm"
@@ -164,7 +164,7 @@ func jumpToAgent(uuid string) tea.Cmd {
 	if uuid == "" {
 		return nil
 	}
-	rec, err := agent.Read(uuid)
+	rec, err := domain.LoadAgent(uuid)
 	if err != nil {
 		return nil
 	}
@@ -179,7 +179,7 @@ func jumpToAgent(uuid string) tea.Cmd {
 			}
 		}
 		// Otherwise spawn a new window in the worktree running `agent run`.
-		if id, err := agent.SpawnRunWindow(rec.WorktreePath); err == nil {
+		if id, err := wezterm.SpawnAgentRunWindow(rec.WorktreePath); err == nil {
 			wezterm.MaximizePane(id)
 		}
 		return nil
@@ -248,12 +248,12 @@ func (m Model) archiveCursor() tea.Cmd {
 	if uuid == "" {
 		return nil
 	}
-	rec, err := agent.Read(uuid)
+	rec, err := domain.LoadAgent(uuid)
 	if err != nil {
 		return nil
 	}
 	rec.Archived = true
-	_ = agent.Write(rec)
+	_ = rec.Save()
 	_ = slot.ClearByUUID(uuid)
 	return loadRowsCmd(m.ShowArchived)
 }
@@ -263,12 +263,12 @@ func (m Model) unarchiveCursor() tea.Cmd {
 	if uuid == "" {
 		return nil
 	}
-	rec, err := agent.Read(uuid)
+	rec, err := domain.LoadAgent(uuid)
 	if err != nil {
 		return nil
 	}
 	rec.Archived = false
-	_ = agent.Write(rec)
+	_ = rec.Save()
 	return loadRowsCmd(m.ShowArchived)
 }
 

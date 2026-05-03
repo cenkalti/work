@@ -6,7 +6,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/cenkalti/work/internal/agent"
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/slot"
 	"github.com/spf13/cobra"
 )
@@ -61,35 +61,36 @@ func listAgents(opts listOpts) ([]string, error) {
 
 // agentHandle is the CLI handle used by `agent jump` and similar commands.
 // It uses project/branch (or project for root agents) for back-compat.
-func agentHandle(r *agent.Record) string {
-	if r.Branch == "" {
-		return r.Project
+func agentHandle(r *domain.Agent) string {
+	project := r.Repo().ProjectName()
+	if r.WorktreeName == "" {
+		return project
 	}
-	return r.Project + "/" + r.Branch
+	return project + "/" + r.WorktreeName
 }
 
-func listAgentRecords(opts listOpts) ([]*agent.Record, error) {
-	all, err := agent.List()
+func listAgentRecords(opts listOpts) ([]*domain.Agent, error) {
+	all, err := domain.ListAgents()
 	if err != nil {
 		return nil, err
 	}
 
 	var sessionIDs map[string]struct{}
 	if !opts.all {
-		sessionIDs = agent.RunningSessionIDs()
+		sessionIDs = domain.RunningSessionIDs()
 	}
 
-	out := make([]*agent.Record, 0, len(all))
+	out := make([]*domain.Agent, 0, len(all))
 	for _, r := range all {
 		if !opts.all {
-			if _, ok := sessionIDs[strings.ToLower(r.CurrentSessionID)]; !ok {
+			if _, ok := sessionIDs[strings.ToLower(r.SessionID)]; !ok {
 				continue
 			}
 		}
-		if opts.running && r.Status != agent.StatusRunning && r.Status != agent.StatusToolRunning {
+		if opts.running && r.Status != domain.StatusRunning && r.Status != domain.StatusToolRunning {
 			continue
 		}
-		if opts.idle && r.Status != agent.StatusIdle && r.Status != agent.StatusAwaitingInput {
+		if opts.idle && r.Status != domain.StatusIdle && r.Status != domain.StatusAwaitingInput {
 			continue
 		}
 		out = append(out, r)
@@ -97,23 +98,23 @@ func listAgentRecords(opts listOpts) ([]*agent.Record, error) {
 	return out, nil
 }
 
-func printAgentTable(w *os.File, recs []*agent.Record, slots slot.Map) error {
+func printAgentTable(w *os.File, recs []*domain.Agent, slots slot.Map) error {
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	defer tw.Flush()
 	fmt.Fprintln(tw, "SLOT\tPROJECT\tNAME\tSTATUS\tBRANCH")
 	for _, r := range recs {
 		slotStr := "-"
 		for k, v := range slots {
-			if v == r.ID {
+			if v == r.UUID {
 				slotStr = fmt.Sprint(k)
 				break
 			}
 		}
-		branch := r.Branch
+		branch := r.WorktreeName
 		if branch == "" {
 			branch = "."
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", slotStr, r.Project, r.Name, r.Status, branch)
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", slotStr, r.Repo().ProjectName(), r.Name, r.Status, branch)
 	}
 	return nil
 }

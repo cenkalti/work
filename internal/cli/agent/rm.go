@@ -3,7 +3,7 @@ package agent
 import (
 	"fmt"
 
-	"github.com/cenkalti/work/internal/agent"
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/slot"
 	"github.com/spf13/cobra"
 )
@@ -26,16 +26,16 @@ func rmCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if rec.CurrentSessionID != "" && agent.IsSessionRunning(rec.CurrentSessionID) {
-				return fmt.Errorf("cannot remove %q: session %s is still running. Stop it first.", name, rec.CurrentSessionID)
+			if rec.SessionID != "" && (domain.Session{ID: rec.SessionID}).IsRunning() {
+				return fmt.Errorf("cannot remove %q: session %s is still running. Stop it first.", name, rec.SessionID)
 			}
-			if err := slot.ClearByUUID(rec.ID); err != nil {
+			if err := slot.ClearByUUID(rec.UUID); err != nil {
 				return fmt.Errorf("clearing slot: %w", err)
 			}
-			if err := agent.Delete(rec.ID); err != nil {
+			if err := rec.Delete(); err != nil {
 				return err
 			}
-			fmt.Printf("removed agent %s (%s)\n", name, rec.ID)
+			fmt.Printf("removed agent %s (%s)\n", name, rec.UUID)
 			return nil
 		},
 	}

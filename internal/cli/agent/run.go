@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cenkalti/work/internal/agent"
 	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/session"
 	"github.com/cenkalti/work/internal/wezterm"
@@ -92,14 +91,14 @@ func runCmd() *cobra.Command {
 			rec.UpdatedAt = time.Now().UTC()
 
 			var claudeArgs []string
-			if rec.CurrentSessionID != "" && claudeSessionExists(rec.WorktreePath, rec.CurrentSessionID) {
-				claudeArgs = []string{"claude", "--resume", rec.CurrentSessionID}
+			if rec.SessionID != "" && claudeSessionExists(rec.WorktreePath, rec.SessionID) {
+				claudeArgs = []string{"claude", "--resume", rec.SessionID}
 			} else {
-				rec.CurrentSessionID = uuid.New().String()
-				claudeArgs = []string{"claude", "--session-id", rec.CurrentSessionID}
+				rec.SessionID = uuid.New().String()
+				claudeArgs = []string{"claude", "--session-id", rec.SessionID}
 			}
 
-			if err := agent.Write(rec); err != nil {
+			if err := rec.Save(); err != nil {
 				return err
 			}
 			return syscall.Exec(claudeBin, claudeArgs, os.Environ())
@@ -127,7 +126,7 @@ func claudeSessionExists(worktreePath, sessionID string) bool {
 
 // loadOrCreateAgent returns the agent record for the current worktree, creating
 // one if needed.
-func loadOrCreateAgent() (*agent.Record, error) {
+func loadOrCreateAgent() (*domain.Agent, error) {
 	repo, wt, err := domain.Detect()
 	if err != nil {
 		return nil, err
@@ -148,7 +147,7 @@ func loadOrCreateAgent() (*agent.Record, error) {
 		worktreePath = resolved
 	}
 
-	rec, err := agent.FindByWorktree(worktreePath)
+	rec, err := domain.FindAgentByWorktree(worktreePath)
 	if err == nil {
 		return rec, nil
 	}
@@ -162,23 +161,20 @@ func loadOrCreateAgent() (*agent.Record, error) {
 	}
 	now := time.Now().UTC()
 
-	project := repo.ProjectName()
 	taskID := branchName
 	if taskID == "" {
-		taskID = project
+		taskID = repo.ProjectName()
 	} else {
 		taskID = domain.BranchID(branchName)
 	}
 
-	return &agent.Record{
-		ID:           id.String(),
+	return &domain.Agent{
+		UUID:         id.String(),
 		Name:         taskID,
-		Project:      project,
-		ProjectRoot:  repo.Path,
-		TaskID:       taskID,
-		Branch:       branchName,
+		RepoPath:     repo.Path,
+		WorktreeName: branchName,
 		WorktreePath: worktreePath,
-		Status:       agent.StatusIdle,
+		Status:       domain.StatusIdle,
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}, nil

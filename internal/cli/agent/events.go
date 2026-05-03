@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	agentpkg "github.com/cenkalti/work/internal/agent"
 	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/inbox"
 	"github.com/spf13/cobra"
@@ -70,8 +69,8 @@ func hookCmd() *cobra.Command {
 
 // updateRecord finds the agent by session id and applies mutate. Missing record
 // is a silent no-op.
-func updateRecord(sessionID string, mutate func(*agentpkg.Record)) error {
-	rec, err := agentpkg.FindBySession(sessionID)
+func updateRecord(sessionID string, mutate func(*domain.Agent)) error {
+	rec, err := domain.FindAgentBySession(sessionID)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil
@@ -80,7 +79,7 @@ func updateRecord(sessionID string, mutate func(*agentpkg.Record)) error {
 	}
 	mutate(rec)
 	rec.UpdatedAt = time.Now().UTC()
-	return agentpkg.Write(rec)
+	return rec.Save()
 }
 
 func handleSessionStart(p *hookPayload) error {
@@ -90,8 +89,8 @@ func handleSessionStart(p *hookPayload) error {
 	writeOSC133("A")
 	writeOSC133("B")
 	now := time.Now().UTC()
-	if err := updateRecord(p.SessionID, func(r *agentpkg.Record) {
-		r.Status = agentpkg.StatusIdle
+	if err := updateRecord(p.SessionID, func(r *domain.Agent) {
+		r.Status = domain.StatusIdle
 		r.StartedAt = now
 		r.LastActivity = now
 	}); err != nil {
@@ -110,8 +109,8 @@ func handleSessionStart(p *hookPayload) error {
 func handleSessionEnd(p *hookPayload) error {
 	clearInbox(p.SessionID)
 	now := time.Now().UTC()
-	return updateRecord(p.SessionID, func(r *agentpkg.Record) {
-		r.Status = agentpkg.StatusStopped
+	return updateRecord(p.SessionID, func(r *domain.Agent) {
+		r.Status = domain.StatusStopped
 		r.CurrentTool = ""
 		r.TurnStartedAt = time.Time{}
 		r.NotificationCount = 0
@@ -121,8 +120,8 @@ func handleSessionEnd(p *hookPayload) error {
 
 func handlePreToolUse(p *hookPayload) error {
 	now := time.Now().UTC()
-	if err := updateRecord(p.SessionID, func(r *agentpkg.Record) {
-		r.Status = agentpkg.StatusToolRunning
+	if err := updateRecord(p.SessionID, func(r *domain.Agent) {
+		r.Status = domain.StatusToolRunning
 		r.CurrentTool = p.ToolName
 		r.NotificationCount = 0
 		r.LastActivity = now
@@ -138,8 +137,8 @@ func handlePreToolUse(p *hookPayload) error {
 
 func handlePostToolUse(p *hookPayload) error {
 	now := time.Now().UTC()
-	return updateRecord(p.SessionID, func(r *agentpkg.Record) {
-		r.Status = agentpkg.StatusRunning
+	return updateRecord(p.SessionID, func(r *domain.Agent) {
+		r.Status = domain.StatusRunning
 		r.CurrentTool = ""
 		r.NotificationCount = 0
 		r.LastActivity = now
@@ -149,8 +148,8 @@ func handlePostToolUse(p *hookPayload) error {
 func handleUserPromptSubmit(p *hookPayload) error {
 	writeOSC133("C")
 	now := time.Now().UTC()
-	if err := updateRecord(p.SessionID, func(r *agentpkg.Record) {
-		r.Status = agentpkg.StatusRunning
+	if err := updateRecord(p.SessionID, func(r *domain.Agent) {
+		r.Status = domain.StatusRunning
 		r.LastPromptPreview = truncatePrompt(p.Prompt, promptPreviewLen)
 		r.MessageCount++
 		r.NotificationCount = 0
@@ -168,8 +167,8 @@ func handleStop(p *hookPayload, exit int) error {
 	writeOSC133("A")
 	writeOSC133("B")
 	now := time.Now().UTC()
-	return updateRecord(p.SessionID, func(r *agentpkg.Record) {
-		r.Status = agentpkg.StatusIdle
+	return updateRecord(p.SessionID, func(r *domain.Agent) {
+		r.Status = domain.StatusIdle
 		r.CurrentTool = ""
 		r.TurnStartedAt = time.Time{}
 		r.LastActivity = now
@@ -178,8 +177,8 @@ func handleStop(p *hookPayload, exit int) error {
 
 func handleNotification(p *hookPayload) error {
 	now := time.Now().UTC()
-	if err := updateRecord(p.SessionID, func(r *agentpkg.Record) {
-		r.Status = agentpkg.StatusAwaitingInput
+	if err := updateRecord(p.SessionID, func(r *domain.Agent) {
+		r.Status = domain.StatusAwaitingInput
 		r.NotificationCount++
 		r.LastActivity = now
 	}); err != nil {

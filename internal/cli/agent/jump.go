@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	agentpkg "github.com/cenkalti/work/internal/agent"
 	"github.com/cenkalti/work/internal/domain"
 	"github.com/cenkalti/work/internal/wezterm"
 	"github.com/spf13/cobra"
@@ -37,7 +36,7 @@ func jumpCmd() *cobra.Command {
 			if paneID < 0 {
 				// No live claude pane in this worktree; spawn a new window
 				// running `agent run` there.
-				_, err := agentpkg.SpawnRunWindow(path)
+				_, err := wezterm.SpawnAgentRunWindow(path)
 				return err
 			}
 			if err := wezterm.ActivateTab(tabID); err != nil {

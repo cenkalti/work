@@ -34,16 +34,6 @@ func (r Repo) WorktreeRoot() string {
 	return filepath.Join(r.Path, ".work", "tree")
 }
 
-// RootWorkspace returns the per-project anonymous slot used when planning
-// at the repo root: $HOME/.work/space/<project>/_root.
-func (r Repo) RootWorkspace() (string, error) {
-	dir, err := r.ProjectDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dir, "_root"), nil
-}
-
 // WorkspaceLink is the workspace symlink at the repo root.
 func (r Repo) WorkspaceLink() string {
 	return filepath.Join(r.Path, "workspace")
@@ -91,13 +81,11 @@ func (r Repo) EnsureProject() (string, error) {
 // Otherwise the project dir + the _root dir are created and the symlink
 // is established.
 func (r Repo) EnsureRootWorkspace() (string, error) {
-	if _, err := r.EnsureProject(); err != nil {
-		return "", err
-	}
-	rw, err := r.RootWorkspace()
+	dir, err := r.EnsureProject()
 	if err != nil {
 		return "", err
 	}
+	rw := filepath.Join(dir, "_root")
 	link := r.WorkspaceLink()
 	if _, err := os.Lstat(link); err == nil {
 		return rw, nil

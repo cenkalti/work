@@ -6,7 +6,7 @@ import (
 	"io/fs"
 	"time"
 
-	"github.com/cenkalti/work/internal/agent"
+	"github.com/cenkalti/work/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -31,14 +31,14 @@ func mvCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if other, err := findAgentByName(newName); err == nil && other.ID != rec.ID {
+			if other, err := findAgentByName(newName); err == nil && other.UUID != rec.UUID {
 				return fmt.Errorf("name %q is already in use", newName)
 			} else if err != nil && !errors.Is(err, fs.ErrNotExist) {
 				return err
 			}
 			rec.Name = newName
 			rec.UpdatedAt = time.Now().UTC()
-			if err := agent.Write(rec); err != nil {
+			if err := rec.Save(); err != nil {
 				return err
 			}
 			fmt.Printf("renamed %s -> %s\n", oldName, newName)
@@ -49,12 +49,12 @@ func mvCmd() *cobra.Command {
 
 // findAgentByName returns the unique agent with Name == name.
 // Returns fs.ErrNotExist if no match. Errors if multiple match.
-func findAgentByName(name string) (*agent.Record, error) {
-	all, err := agent.List()
+func findAgentByName(name string) (*domain.Agent, error) {
+	all, err := domain.ListAgents()
 	if err != nil {
 		return nil, err
 	}
-	var matches []*agent.Record
+	var matches []*domain.Agent
 	for _, r := range all {
 		if r.Name == name {
 			matches = append(matches, r)
@@ -72,7 +72,7 @@ func findAgentByName(name string) (*agent.Record, error) {
 
 // agentNames returns the set of agent names for tab completion.
 func agentNames() ([]string, error) {
-	all, err := agent.List()
+	all, err := domain.ListAgents()
 	if err != nil {
 		return nil, err
 	}

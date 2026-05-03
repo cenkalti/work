@@ -8,7 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/table"
-	"github.com/cenkalti/work/internal/agent"
+	"github.com/cenkalti/work/internal/domain"
 )
 
 var (
@@ -50,11 +50,11 @@ var (
 	dirtyStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD866"))
 
 	statusStyles = map[string]lipgloss.Style{
-		agent.StatusRunning:       lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#5FD7FF")),
-		agent.StatusToolRunning:   lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD866")),
-		agent.StatusAwaitingInput: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FF5F87")),
-		agent.StatusIdle:          lipgloss.NewStyle().Foreground(accent2),
-		agent.StatusStopped:       lipgloss.NewStyle().Faint(true).Foreground(muted),
+		domain.StatusRunning:       lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#5FD7FF")),
+		domain.StatusToolRunning:   lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD866")),
+		domain.StatusAwaitingInput: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FF5F87")),
+		domain.StatusIdle:          lipgloss.NewStyle().Foreground(accent2),
+		domain.StatusStopped:       lipgloss.NewStyle().Faint(true).Foreground(muted),
 	}
 
 	footerStyle = lipgloss.NewStyle().Faint(true).Foreground(muted).MarginTop(1)
