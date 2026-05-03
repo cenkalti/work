@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"fmt"
 	"os"
 )
 
@@ -20,5 +19,6 @@ func writeOSC133(seq string) {
 		return
 	}
 	defer f.Close()
-	fmt.Fprintf(f, "\x1b]133;%s\x07", seq)
+	// TODO: disabled OSC 133 temporarily
+	// fmt.Fprintf(f, "\x1b]133;%s\x07", seq)
 }
